@@ -1,0 +1,17 @@
+REPORT MANAGER — PACCHETTO PER GITHUB PAGES
+
+1. Leggi PUBBLICAZIONE.md e configura prima il ricevitore Apps Script.
+2. Configura SPREADSHEET_ID, APP_ORIGINS, ADMIN_PASSWORD e TUTOR_PASSWORD
+   nelle Proprietà script di Google. Esegui initialize_.
+3. Compila public/report-manager.config.json con URL Apps Script e URL Pages.
+4. Carica il CONTENUTO di questa cartella nella radice del repository,
+   includendo .github/workflows/pages.yml. Attiva Pages con GitHub Actions.
+5. Attendi il workflow verde e completa COLLAUDO.md con un Foglio di prova.
+
+Non pubblicare password, dati reali o registri compilati nel repository.
+Non cancellare le presenze precedenti: rinomina la vecchia scheda come
+indicato nella guida. I vecchi QR devono essere rigenerati.
+
+Questo pacchetto mantiene l'app statica, senza database né funzioni Netlify.
+Il collaudo reale Google/smartphone e la build con tutte le dipendenze
+non sono stati eseguiti nell'ambiente di preparazione: vedi COLLAUDO.md.

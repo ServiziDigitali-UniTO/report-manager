@@ -1,0 +1,17 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Collegamento Report Manager</title></head><body>
+<script>
+'use strict';
+const config = <?!= bridgeConfig ?>;
+function send(message) { window.top.postMessage({...message,channel:config.channel,protocol:'RM2'},config.origin); }
+const ready = setInterval(()=>send({type:'ready'}),500);
+send({type:'ready'});
+window.addEventListener('message',event=>{
+  if(event.source!==window.top || event.origin!==config.origin) return;
+  const m=event.data;
+  if(!m || m.protocol!=='RM2' || m.channel!==config.channel || m.type!=='request' || typeof m.id!=='string') return;
+  clearInterval(ready);
+  google.script.run.withSuccessHandler(result=>send({type:'response',id:m.id,result}))
+    .withFailureHandler(()=>send({type:'response',id:m.id,result:{status:'error',message:'Collegamento Google non disponibile. Riprovare: la presenza non è ancora confermata.'}}))
+    .dispatch({...m.request,origin:config.origin});
+});
+</script></body></html>

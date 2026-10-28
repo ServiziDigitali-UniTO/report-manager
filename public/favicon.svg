@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2C4235" />
+      <stop offset="100%" stop-color="#3E5C4B" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.18" />
+    </filter>
+  </defs>
+  <!-- Background Card -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bgGrad)" />
+  
+  <!-- Outer Document Frame -->
+  <g filter="url(#shadow)">
+    <rect x="128" y="100" width="256" height="312" rx="24" fill="#FFFFFF" />
+    
+    <!-- Top Header Bar -->
+    <rect x="128" y="100" width="256" height="64" rx="24" fill="#EAEFEA" />
+    <rect x="128" y="140" width="256" height="24" fill="#EAEFEA" />
+    <circle cx="168" cy="132" r="10" fill="#3E5C4B" />
+    <rect x="192" y="126" width="112" height="12" rx="6" fill="#3E5C4B" opacity="0.8" />
+    
+    <!-- Chart Bars on Report -->
+    <rect x="168" y="280" width="32" height="80" rx="8" fill="#3E5C4B" />
+    <rect x="216" y="230" width="32" height="130" rx="8" fill="#587F6A" />
+    <rect x="264" y="200" width="32" height="160" rx="8" fill="#2C4235" />
+    <rect x="312" y="250" width="32" height="110" rx="8" fill="#88A895" />
+    
+    <!-- Document Text Lines -->
+    <rect x="168" y="180" width="176" height="10" rx="5" fill="#D1DDD6" />
+  </g>
+</svg>
