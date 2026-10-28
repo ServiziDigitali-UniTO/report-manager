@@ -24,7 +24,16 @@ export async function sendAttendanceToGoogleSheets(records:ValidationRecord[],su
   const draft=JSON.stringify({records:records.map(({id,validatedAt,pinUsed,securityHash,...r})=>r),summary});
   let pending:{draft:string;requestId:string}[]=[];try{pending=JSON.parse(localStorage.getItem(PENDING_KEY)||'[]');}catch{}
   const requestId=pending.find(r=>r.draft===draft)?.requestId||crypto.randomUUID();
-  const auth=authorization?.shiftId&&authorization.token?{shiftId:authorization.shiftId,token:authorization.token,pin:authorization.pin}:{password:getAdminPassword()};
+  const auth = authorization?.shiftId && authorization.token
+  ? {
+      shiftId: authorization.shiftId,
+      token: authorization.token,
+      pin: authorization.pin,
+      tutorPassword: authorization.tutorPassword
+    }
+  : {
+      password: getAdminPassword()
+    };
   try{
     localStorage.setItem(PENDING_KEY,JSON.stringify([...pending.filter(r=>r.draft!==draft),{draft,requestId}]));
     const result=await rpc('submit',{requestId,records,summary},auth);
