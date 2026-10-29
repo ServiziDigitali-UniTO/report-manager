@@ -93,18 +93,31 @@ export const AttendanceQrCode: React.FC<AttendanceQrCodeProps> = ({
         </div>
       )}
 
-      {/* Screen-only interactive simulation button - Identical layout and styling */}
-      <div className="w-full mt-1.5 flex flex-col items-center justify-center print:hidden">
-        {isTutor && onOpenValidator ? (
-          <button
-            type="button"
-            disabled={!securePayload} onClick={() => securePayload && onOpenValidator(securePayload)}
-            className="w-full text-[9px] font-bold px-2 py-1 rounded-lg bg-[#E8EFEA] hover:bg-[#d5e4db] text-[#2C4437] border border-[#C5D6CC] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
-            title="Apri schermata appello del tutor su questo schermo"
+      {/* A real link remains clickable in browser-generated PDFs. */}
+      <div className={`w-full mt-1.5 flex flex-col items-center justify-center ${isTutor ? '' : 'print:hidden'}`}>
+        {isTutor ? (
+          <a
+            href={registered ? shiftLink(registered, 'tutor') : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={!registered}
+            onClick={(event) => {
+              if (!registered || !securePayload) {
+                event.preventDefault();
+                return;
+              }
+              // Keep the existing in-app opening. PDF readers use the href above.
+              if (onOpenValidator) {
+                event.preventDefault();
+                onOpenValidator(securePayload);
+              }
+            }}
+            className="w-full text-[9px] font-bold px-2 py-1 rounded-lg bg-[#E8EFEA] hover:bg-[#d5e4db] text-[#2C4437] border border-[#C5D6CC] transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs print:shadow-none print:no-underline"
+            title="Apri l’appello tutor di questo turno; collegamento disponibile anche nel PDF"
           >
-            <Smartphone className="w-2.5 h-2.5 text-[#3E5C4B]" />
+            <ExternalLink className="w-2.5 h-2.5 text-[#3E5C4B]" />
             <span>Apri Appello Tutor</span>
-          </button>
+          </a>
         ) : !isTutor && onOpenStudentCheckIn ? (
           <button
             type="button"
