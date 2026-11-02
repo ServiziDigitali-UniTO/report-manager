@@ -8,10 +8,6 @@ REPORT MANAGER — PACCHETTO PER GITHUB PAGES
    includendo .github/workflows/pages.yml. Attiva Pages con GitHub Actions.
 5. Attendi il workflow verde e completa COLLAUDO.md con un Foglio di prova.
 
-Non pubblicare password, dati reali o registri compilati nel repository.
-Non cancellare le presenze precedenti: rinomina la vecchia scheda come
-indicato nella guida. I vecchi QR devono essere rigenerati.
-
 Questo pacchetto mantiene l'app statica, senza database né funzioni Netlify.
 Il collaudo reale Google/smartphone e la build con tutte le dipendenze
 non sono stati eseguiti nell'ambiente di preparazione: vedi COLLAUDO.md.
