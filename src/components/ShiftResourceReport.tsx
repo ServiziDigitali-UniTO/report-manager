@@ -635,7 +635,7 @@ export const ShiftResourceReport: React.FC<ShiftResourceReportProps> = ({
                         let methodBadge = (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-stone-700 bg-stone-100 px-2 py-0.5 rounded border border-stone-300">
                             <FileSignature className="w-3 h-3 text-stone-500" />
-                            <span>Firma Cartacea</span>
+                            <span>{st.validatedAt?'Convalida da CSV':'Da verificare'}</span>
                           </span>
                         );
 

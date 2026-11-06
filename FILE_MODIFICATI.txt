@@ -1,0 +1,33 @@
+Confronto con lo ZIP del repository caricato nella conversazione.
+Eventuali modifiche indipendenti più recenti vanno confrontate a parte.
+
+NUOVO .github/workflows/pages.yml
+NUOVO AGGIORNAMENTO_V3.md
+AGGIORNATO COLLAUDO.md
+AGGIORNATO INIZIA_QUI.txt
+AGGIORNATO NOTE_TECNICHE.md
+AGGIORNATO PUBBLICAZIONE.md
+AGGIORNATO README.md
+AGGIORNATO apps-script/Code.gs
+NUOVO apps-script/Portal.html
+NUOVO apps-script/Weekly.gs
+AGGIORNATO package-lock.json
+AGGIORNATO package.json
+NUOVO public/.nojekyll
+AGGIORNATO public/report-manager.config.json
+NUOVO public/tutor.css
+AGGIORNATO src/App.tsx
+AGGIORNATO src/components/AttendanceQrCode.tsx
+AGGIORNATO src/components/ShiftResourceReport.tsx
+AGGIORNATO src/data/defaultCsv.ts
+AGGIORNATO src/services/bridge.ts
+AGGIORNATO src/services/googleSheetsWebhook.ts
+NUOVO src/services/weekly.ts
+NUOVO src/tutor-entry.tsx
+AGGIORNATO src/utils/assets.ts
+NUOVO src/weekly/WeeklyAdmin.tsx
+NUOVO src/weekly/WeeklyRouter.tsx
+AGGIORNATO tests/client.test.mjs
+NUOVO tests/helpers/apps-script.mjs
+NUOVO tests/weekly.test.mjs
+AGGIORNATO vite.config.ts

@@ -1,38 +1,43 @@
-# Architettura e modifiche della versione 2
+# Note tecniche versione 3
 
-## Comunicazione indipendente dall'hosting
+## Un solo progetto, due accessi alla stessa UI
 
-`bridge.ts` carica un iframe dall'URL Apps Script `/exec`, passando l'origine del sito e un canale casuale a 256 bit. Apps Script verifica l'origine nella proprietà `APP_ORIGINS` e serve `Bridge.html`. La pagina usa `google.script.run` per chiamare `dispatch`; non legge risposte `no-cors` e non usa API Netlify.
+`src/weekly/WeeklyRouter.tsx` contiene registro tutor e autoconvalida. L'app principale li apre tramite hash routing. Vite compila anche `src/tutor-entry.tsx` come `tutor.js`: `Portal.html` può caricare questa stessa UI direttamente dalla distribuzione Apps Script, senza il ponte iframe fra il sito statico e Google.
 
-Google annida HtmlService in un proprio frame. La prima risposta viene associata al canale casuale e a un'origine HTTPS Google ammessa; le successive richiedono esattamente la stessa finestra sorgente, origine, canale e identificativo della richiesta. Il frame verifica l'origine e la finestra dell'app prima di inoltrare la richiesta. Questo controllo protegge la comunicazione del browser; l'autorizzazione dei dati viene verificata separatamente dal server e non si basa sul solo campo origine.
+Nel portale nativo il trasporto è `google.script.run`; sul sito rimane il ponte con verifica di origine, sorgente, canale casuale e ID richiesta. Il trasporto nativo usa l'origine del sito configurato e verifica i risultati con gli stessi criteri del trasporto normale. Il controllo dell'origine non sostituisce l'autorizzazione server. Il portale Google è un'alternativa da collaudare, non una promessa di soluzione universale al problema multi-account.
 
-Le operazioni sono serializzate nel browser e il server usa `getScriptLock()`. Ogni richiesta ha un timeout e le ricevute vengono prodotte soltanto quando il server conferma l'intero invio. L'eventuale errore dopo una scrittura ma prima della risposta non viene interpretato come certezza di mancata scrittura: il reinvio conserva l'ID della richiesta.
+## Dati e pubblicazioni
 
-## Ruoli e dati
+Il parser `parseAffluencesCsv` è riutilizzato. `buildWeek` seleziona la settimana e scarta le cancellazioni riconosciute dal parser; non riscrive la logica del CSV. Il server assegna le aree per ID risorsa e costruisce uno snapshot normalizzato.
 
-- La segreteria usa `ADMIN_PASSWORD` per registrare gli snapshot dei turni, consultare gli esiti correnti e rettificare.
-- I token sono HMAC del ruolo e dell'identificativo dello snapshot, usando `SIGNING_SECRET` nelle proprietà Apps Script. Il token studente non consente operazioni tutor.
-- Il tutor deve possedere il token del turno e conoscere `TUTOR_PASSWORD`. Il nome tutor è dichiarato e non viene equiparato a un'identità autenticata individualmente.
-- Lo studente deve possedere il token studente e conoscere il PIN casuale del turno. Può registrare solo `present` per una matricola presente nell'elenco autorizzato. Il nome e il codice prenotazione vengono recuperati dall'elenco server.
-- I token sono nel frammento del link QR, senza l'intero elenco nominativo. Gli elenchi risiedono nel Foglio e vengono caricati solo quando serve. Un QR è comunque un codice di accesso: non va pubblicato su pagine aperte estranee al flusso dei tirocini.
-- Il PIN non viene riportato nelle presenze registrate o nelle ricevute; resta nello snapshot del turno. Dopo venti PIN errati il turno è temporaneamente bloccato tramite cache Apps Script. Questo è un contenimento degli errori/abusi, non una protezione illimitata contro attacchi o esaurimento delle quote Google.
+Il turno settimanale è identificato da ID risorsa, data e fascia. La prenotazione all'interno del turno usa il codice prenotazione. I codici ripetuti in turni diversi sono quindi distinti. Matricole mancanti sono ammesse con identificazione tramite codice prenotazione e avviso alla segreteria; gli studenti fuori elenco inseriti dal tutor devono avere matricola.
 
-Le credenziali segreteria sono conservate solo in `sessionStorage` della scheda. I codici tutor restano nello stato del modulo aperto. Gli stati confermati e le bozze dei reinvii sono in `localStorage` del dispositivo; le bozze persistenti escludono PIN e token. Le schermate richiedono di lasciare aperto il modulo se la conferma manca: non è implementata una sincronizzazione automatica in background di tutte le bozze archiviate.
+`RM_Turni_Settimanali` contiene le versioni degli snapshot. Solo il puntatore in `RM_Settimane` determina quale pubblicazione è visibile. Gli snapshot vengono scritti e confermati prima di aggiornare quel puntatore. Una scrittura incompleta non rende visibile una settimana a metà. Non è una transazione generale di database: eventuali snapshot orfani dopo un errore restano non visibili.
 
-## Integrità e rettifiche
+La pubblicazione è completa per l'intera settimana. Si confronta l'ID della pubblicazione attesa per evitare modifiche simultanee fra segreterie. Le rimozioni con esiti già registrati richiedono una conferma esplicita; lo storico non viene eliminato e gli iscritti rimossi non sono reinseriti silenziosamente come fuori elenco.
 
-La presenza è identificata da data, risorsa normalizzata, fascia normalizzata e matricola. Lo snapshot del turno ha invece un identificativo che include l'elenco degli iscritti: un elenco modificato genera nuovi QR, senza creare una seconda identità della stessa presenza.
+## Esiti e concorrenza
 
-Ogni evento conserva l'esito, i minuti, il metodo, il validatore dichiarato, le note individuali e generali, l'orario server, l'identificativo della richiesta e una ricevuta HMAC che copre questi dati. Non è un semplice conteggio di presenti e assenti.
+Lo storico mantiene le 18 colonne di `Presenze_Tirocini`; vengono aggiunti attributi nel JSON della colonna R. La chiave delle presenze resta compatibile con la versione 2: data, nome risorsa normalizzato, fascia e matricola; in mancanza di matricola si usa il codice prenotazione. I nomi canonici delle risorse sono definiti dal server. Una rinomina del nome canonico può richiedere riconciliazione delle presenze esistenti e non va effettuata come modifica cosmetica durante una settimana.
 
-Le rettifiche aggiungono eventi allo storico. `list` restituisce l'ultimo evento per presenza. Un invio studente successivo non può correggere un esito tutor o segreteria: se quell'esito è assente viene richiesto l'intervento del tutor; se è presente/ritardo viene restituito l'esito già accertato. Una richiesta con lo stesso ID e dati differenti viene rifiutata. Richieste semanticamente identiche all'esito corrente non generano un nuovo evento.
+Il motore `commitEvents_` applica identificativi richiesta, ricevute HMAC, priorità tutor rispetto allo studente e controllo dell'ID evento atteso per le rettifiche settimanali. Lo script lock protegge pubblicazioni e scritture concorrenti di questo progetto; non protegge modifiche manuali alle celle o scritture di altri progetti.
 
-Tutte le righe di un invio vengono validate prima dell'operazione di scrittura. Il Foglio non è un database transazionale: il lock protegge le esecuzioni di questo progetto Apps Script, non modifiche manuali o scritture da altri progetti. Per questo le schede tecniche non vanno alterate durante l'operatività.
+Gli esiti tutor usano `TUTOR_QR`; le trascrizioni da cartaceo usano `CARTACEA` con nota obbligatoria; le rettifiche della segreteria negli strumenti precedenti usano `MANUALE`. L'autoconvalida usa `STUDENTE_QR`, sempre presente con zero minuti. Non può sovrascrivere un esito già verificato da tutor/segreteria. Le discrepanze fra una precedente autoconvalida e un esito tutor diverso da presente sono segnalate.
 
-## Configurazione e portabilità
+## Accessi e QR
 
-Vite usa `base: './'`; logo e favicon sono risolti rispetto al percorso dell'app. Nessun servizio server dell'hosting è necessario. La dipendenza per la raccolta centralizzata resta Google Apps Script e Google Sheets.
+I collegamenti tutor contengono un ID e un segreto casuale. Nel Foglio è salvata l'impronta del segreto, insieme a risorse autorizzate, scadenza e revoca. Ogni lettura, incluso il polling che non restituisce dati modificati, verifica l'accesso. Il segreto è mostrato alla segreteria una sola volta al momento dell'emissione. Nel browser può essere memorizzato per evitare richieste ripetute; non è un login personale e può essere trasferito.
 
-Il workflow GitHub compila e pubblica solo `dist`, dopo TypeScript e test. Non pubblica un database o una funzione server. Nel pacchetto non è incluso un `dist` precompilato non verificato: GitHub lo costruisce con le dipendenze bloccate nel lock npm. I limiti della verifica locale e il collaudo richiesto sono descritti in `COLLAUDO.md`.
+Il QR studente usa un HMAC distinto e legato al turno, senza privilegi tutor e senza PIN. Il server rilegge l'elenco attualmente pubblicato e controlla la finestra da 30 minuti prima a 60 minuti dopo il turno secondo Europe/Rome. La selezione del nominativo non prova l'identità; il tutor verifica gli esiti. La rotazione di `SIGNING_SECRET` invalida i QR firmati, inclusi quelli v2; non effettuarla durante la migrazione ordinaria.
 
-La migrazione non converte automaticamente i registri della versione 1 e non rende validi i vecchi sigilli. La conservazione dei vecchi dati avviene tramite archivio separato.
+## Sincronizzazione online
+
+La UI legge all'apertura, ogni 30 secondi se visibile e al ritorno nella pagina. Confronta una revisione prima di riscaricare gli elenchi. La revisione è aggiornata anche dalle scritture v2: i due percorsi vedono lo stesso storico.
+
+Nelle nuove aree non sono memorizzati roster o esiti per l'uso offline e non è presente una coda di invio automatico dopo la chiusura della pagina. Un comando non confermato conserva l'ID solo in memoria per il reinvio dallo stesso modulo. Un ricaricamento richiede di rileggere lo stato dal server. Gli strumenti precedenti mantengono la loro cache locale, che non è una sincronizzazione offline del nuovo sistema.
+
+Non tutti i caricamenti sono incrementali: il primo caricamento e i cambiamenti di revisione leggono ancora lo storico server. I poll senza modifiche sono più leggeri. Per volumi elevati occorre misurare le prestazioni e valutare ulteriori indici/archiviazione.
+
+## Limiti del pacchetto
+
+Il sito rimane statico; Apps Script è il servizio Google già previsto. Non sono introdotti database esterni, servizi Netlify o dipendenze npm aggiuntive. Vite resta alla versione 6 bloccata nel lock. Il pacchetto richiede build GitHub e collaudo Google/browser reale prima della sostituzione operativa. I risultati locali sono in `COLLAUDO.md`.

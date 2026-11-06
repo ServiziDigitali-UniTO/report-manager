@@ -1,13 +1,27 @@
-REPORT MANAGER — PACCHETTO PER GITHUB PAGES
+REPORT MANAGER 3 — AGGIORNAMENTO SETTIMANALE
 
-1. Leggi PUBBLICAZIONE.md e configura prima il ricevitore Apps Script.
-2. Configura SPREADSHEET_ID, APP_ORIGINS, ADMIN_PASSWORD e TUTOR_PASSWORD
-   nelle Proprietà script di Google. Esegui initialize_.
-3. Compila public/report-manager.config.json con URL Apps Script e URL Pages.
-4. Carica il CONTENUTO di questa cartella nella radice del repository,
-   includendo .github/workflows/pages.yml. Attiva Pages con GitHub Actions.
-5. Attendi il workflow verde e completa COLLAUDO.md con un Foglio di prova.
+LEGGERE PRIMA AGGIORNAMENTO_V3.md.
 
-Questo pacchetto mantiene l'app statica, senza database né funzioni Netlify.
-Il collaudo reale Google/smartphone e la build con tutte le dipendenze
-non sono stati eseguiti nell'ambiente di preparazione: vedi COLLAUDO.md.
+Non cancellare né rinominare le due schede già in uso.
+Conservare password e SIGNING_SECRET attuali.
+Aggiungere APP_URL nelle Proprietà script Google.
+
+Google Apps Script:
+- sostituire Code.gs e Bridge.html;
+- aggiungere Weekly.gs e Portal.html;
+- inizializzare con il wrapper temporaneo descritto nella guida;
+- aggiornare la distribuzione esistente, mantenendo lo stesso URL.
+
+GitHub:
+- caricare il CONTENUTO di questa cartella nella radice del repository;
+- includere .github e tutti i nuovi file;
+- attendere Actions verde;
+- eseguire COLLAUDO.md prima dell'uso operativo.
+
+Nuove aree tutor: accesso tramite link riservato, senza password ripetute.
+Nuovi QR studenti: senza PIN, con selezione del proprio nominativo.
+Stampa: solo dal menu Emergenza e accesso.
+Nessuna modalità offline.
+
+Il pacchetto non è stato applicato al tuo repository o al tuo Foglio.
+I limiti delle verifiche locali sono dichiarati in COLLAUDO.md.

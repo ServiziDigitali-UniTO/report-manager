@@ -15,7 +15,7 @@ function initialize_() {
   const p = props_();
   if (!p.getProperty('SIGNING_SECRET')) p.setProperty('SIGNING_SECRET', Utilities.getUuid() + Utilities.getUuid());
   const c = config_();
-  withLock_(() => { const ss = SpreadsheetApp.openById(c.SPREADSHEET_ID); ss.setSpreadsheetTimeZone('Europe/Rome'); sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_); sheet_(ss,'RM_Turni',SHIFT_HEADERS_); });
+  withLock_(() => { const ss = SpreadsheetApp.openById(c.SPREADSHEET_ID); ss.setSpreadsheetTimeZone('Europe/Rome'); sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_); sheet_(ss,'RM_Turni',SHIFT_HEADERS_); if(typeof weeklyInit_==='function')weeklyInit_(ss); });
 }
 function withLock_(fn) { const lock = LockService.getScriptLock(); lock.waitLock(25000); try { return fn(); } finally { SpreadsheetApp.flush(); lock.releaseLock(); } }
 function sheet_(ss, name, headers) {
@@ -32,7 +32,7 @@ function sheet_(ss, name, headers) {
 function appendRows_(sheet,rows) {
   const start=sheet.getLastRow()+1;
   if(sheet.getMaxRows && start+rows.length-1>sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(),start+rows.length-1-sheet.getMaxRows());
-  sheet.getRange(start,1,rows.length,rows[0].length).setNumberFormat('@').setValues(rows);
+  sheet.getRange(start,1,rows.length,rows[0].length).setNumberFormat('@').setValues(rows.map(row=>row.map(safeCell_)));
 }
 function text_(v, max, required) { if (typeof v !== 'string') { if (v == null && !required) return ''; throw new Error('Campo testuale non valido.'); } const s=v.trim(); if ((required && !s) || s.length>max) throw new Error('Campo mancante o troppo lungo.'); return s; }
 function safeCell_(v) { return typeof v==='string' && /^[\s]*[=+@-]/.test(v) ? "'"+v : v; }
@@ -43,6 +43,7 @@ function admin_(a) { if(!a || !equal_(a.password,config_().ADMIN_PASSWORD)) thro
 function authorizedOrigin_(origin) { return config_().APP_ORIGINS.split(',').map(s=>s.trim()).includes(origin); }
 function doGet(e) {
   try {
+    if(e && e.parameter && ['area','student'].includes(e.parameter.view)) return weeklyPortal_(e);
     const origin = text_(e && e.parameter && e.parameter.origin,200,true);
     const channel = text_(e.parameter.channel,100,true);
     if (!authorizedOrigin_(origin) || !/^[a-f0-9]{64}$/.test(channel)) throw new Error('Origine non autorizzata.');
@@ -58,12 +59,13 @@ function dispatch(request) {
     if (!request || JSON.stringify(request).length > 350000) throw new Error('Richiesta non valida o troppo grande.');
     const origin = text_(request.origin,200,true);
     if (!authorizedOrigin_(origin)) throw new Error('Origine non autorizzata.');
+    if(String(request.action||'').startsWith('weekly.'))return weeklyDispatch_(request);
     const a=request.auth || {}, data=request.data || {};
     return withLock_(() => {
       const ss=SpreadsheetApp.openById(config_().SPREADSHEET_ID);
       const shifts=sheet_(ss,'RM_Turni',SHIFT_HEADERS_), events=sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_);
       switch(request.action) {
-        case 'health': admin_(a); return {status:'success',message:'Accesso al Foglio e struttura delle schede verificati.',version:2};
+        case 'health': admin_(a); return {status:'success',message:'Accesso al Foglio e struttura delle schede verificati.',version:3};
         case 'registerShift': admin_(a); return {status:'success',...registerShift_(shifts,data)};
         case 'getShift': return {status:'success',...getShift_(shifts,a)};
         case 'submit': return {status:'success',...submit_(shifts,events,a,data)};
@@ -71,7 +73,7 @@ function dispatch(request) {
         default: throw new Error('Operazione non prevista.');
       }
     });
-  } catch (err) { return {status:'error',message:err.message || 'Operazione non completata.'}; }
+  } catch (err) { return {status:'error',message:err.message || 'Operazione non completata.',code:err.code||'ERROR'}; }
 }
 function validDate_(date) { return /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(new Date(date+'T12:00:00Z').getTime()) && new Date(date+'T12:00:00Z').toISOString().slice(0,10)===date; }
 function slot_(value) { const s=text_(value,40,true).replace(/\s*[–—-]\s*/g,' - '); if(!/^([01]\d|2[0-3]):[0-5]\d - ([01]\d|2[0-3]):[0-5]\d$/.test(s)) throw new Error('La fascia deve avere formato HH:mm - HH:mm.'); return s; }
@@ -113,7 +115,7 @@ function getShift_(sheet,a) {
   // Do not disclose the PIN or the tutor token to the student role.
   return {payload:{...s.payload,shiftId:s.shiftId,token:a.token,role:s.role,...(s.role==='tutor' && equal_(a.tutorPassword,config_().TUTOR_PASSWORD)?{serverPin:s.pin}:{})}};
 }
-function presenceKey_(r) { return digest_(JSON.stringify([r.date,r.resource.toLowerCase(),r.timeSlot,r.matricola.toLowerCase()])); }
+function presenceKey_(r) { return digest_(JSON.stringify([r.date,r.resource.toLowerCase(),r.timeSlot,(r.matricola==='-'?'booking:'+r.bookingCode:r.matricola).toLowerCase()])); }
 function current_(sheet) {
   if(sheet.getLastRow()<2) return [];
   const rows=sheet.getRange(2,18,sheet.getLastRow()-1,1).getValues(), map=new Map();
@@ -129,11 +131,11 @@ function studentWindow_(p) {
   const position=date===p.date?minute:(prevDate===p.date?minute+1440:-99999);
   if(position<times[0]-30 || position>end+60) throw new Error('Auto-convalida consentita da 30 minuti prima a 60 minuti dopo il turno. Rivolgersi al tutor.');
 }
-function normalizeRecord_(r) {
+function normalizeRecord_(r,allowMissingMatricola) {
   const date=text_(r.date,10,true); if(!validDate_(date)) throw new Error('Data non valida.');
   const status=text_(r.status,10,true); if(!['present','late','absent'].includes(status)) throw new Error('Esito non valido.');
   const delay=Number(r.delayMinutes); if(!Number.isInteger(delay)||delay<0||delay>1440||(status!=='late' && delay!==0)||(status==='late'&&delay<1)) throw new Error('Minuti di ritardo non coerenti.');
-  const matricola=text_(r.matricola,50,true); if(matricola==='-') throw new Error('Matricola obbligatoria.');
+  const matricola=text_(r.matricola,50,true); if(matricola==='-' && !allowMissingMatricola) throw new Error('Matricola obbligatoria.');
   return {date,resource:text_(r.resource,250,true),timeSlot:slot_(r.timeSlot),studentName:text_(r.studentName,150,true).toUpperCase(),matricola,bookingCode:text_(r.bookingCode,100,false),email:text_(r.email,200,false),status,delayMinutes:delay,note:text_(r.note,2000,false),isManualIntegration:!!r.isManualIntegration};
 }
 function submit_(shifts,events,a,data) {
@@ -167,34 +169,39 @@ function submit_(shifts,events,a,data) {
     r.fingerprint=digest_(JSON.stringify(r));
     return r;
   });
-  const current=current_(events), byKey=new Map(current.map(r=>[r.presenceKey,r]));
-  // Retry after a lost response: return precisely the previously committed batch.
+  return commitEvents_(events,prepared,requestId,{student:!!shift && shift.role==='student'});
+}
+/** Append-only commit shared by old and weekly flows. Caller has the script lock. */
+function commitEvents_(events,records,requestId,options) {
+  options=options||{};
+  if(!/^[a-zA-Z0-9_-]{10,80}$/.test(requestId))throw new Error('Identificativo richiesta non valido.');
+  const prepared=records.map(r=>{const copy={...r};delete copy.fingerprint;copy.presenceKey=presenceKey_(copy);copy.fingerprint=digest_(JSON.stringify(copy));return copy;});
+  const current=current_(events),byKey=new Map(current.map(r=>[r.presenceKey,r]));
+  if(options.student)prepared.forEach(r=>{const old=byKey.get(r.presenceKey);if(old && old.validationMode!=='STUDENTE_QR' && old.status==='absent'){const e=new Error('Presenza già verificata come assente dal tutor. Richiedere una rettifica.');e.code='TUTOR_ABSENT';throw e;}});
   const previous=events.getLastRow()>1?events.getRange(2,17,events.getLastRow()-1,2).getValues().filter(r=>r[0]===requestId).map(r=>JSON.parse(r[1])):[];
-  if(previous.length) {
-    const fingerprint=digest_(JSON.stringify(prepared.map(r=>r.fingerprint)));
-    if(previous.some(r=>r.batchFingerprint!==fingerprint)) throw new Error('ID richiesta già usato con dati differenti.');
+  const batchFingerprint=digest_(JSON.stringify(prepared.map(r=>r.fingerprint)));
+  if(previous.length){
+    if(previous.some(r=>r.batchFingerprint!==batchFingerprint))throw new Error('ID richiesta già usato con dati differenti.');
     const replay=prepared.map(r=>previous.find(p=>p.presenceKey===r.presenceKey)||byKey.get(r.presenceKey));
-    if(replay.some((r,i)=>!r || r.fingerprint!==prepared[i].fingerprint)) throw new Error('Stato aggiornato dopo la richiesta: consultare il report centrale.');
+    if(replay.some((r,i)=>!r || r.fingerprint!==prepared[i].fingerprint))throw new Error('Stato aggiornato dopo la richiesta: aggiornare il report.');
     return {confirmed:true,records:replay,count:replay.length,duplicate:true};
   }
-  const batchFingerprint=digest_(JSON.stringify(prepared.map(r=>r.fingerprint))), stamp=new Date().toISOString();
-  const toWrite=[], confirmed=[];
+  if(options.expected)prepared.forEach(r=>{const old=byKey.get(r.presenceKey);if((old?.id||null)!==options.expected[r.presenceKey]){const e=new Error('Un altro operatore ha modificato questa presenza. Aggiornare il turno e verificare prima di salvare.');e.code='CONFLICT';throw e;}});
+  const stamp=new Date().toISOString(),toWrite=[],confirmed=[];
   prepared.forEach(r=>{
     const old=byKey.get(r.presenceKey);
-    if(shift && shift.role==='student' && old && old.validationMode!=='STUDENTE_QR') {
-      if(old.status==='absent') throw new Error('Presenza già verificata come assente dal tutor. Richiedere una rettifica.');
-      confirmed.push(old);return;
-    }
+    if(options.student && old && old.validationMode!=='STUDENTE_QR'){confirmed.push(old);return;}
     if(old && old.fingerprint===r.fingerprint){confirmed.push(old);return;}
     const record={...r,id:digest_(requestId+'|'+r.presenceKey).slice(0,32),requestId,batchFingerprint,validatedAt:stamp,securityHash:'RM2-'+sign_(JSON.stringify({...r,validatedAt:stamp,requestId})),syncState:'confirmed'};
     toWrite.push(record);confirmed.push(record);
   });
-  if(toWrite.length) {
+  if(toWrite.length){
     const rows=toWrite.map(r=>[r.date,r.resource,r.timeSlot,r.studentName,r.matricola,r.bookingCode,({present:'PRESENTE',late:'RITARDO',absent:'ASSENTE'})[r.status],r.delayMinutes,r.validationMode,r.validatedAt,r.validatedBy,'NON CONSERVATO',r.securityHash,[r.note,r.tutorNotes?'Note tutor: '+r.tutorNotes:''].filter(Boolean).join('\n'),r.id,r.presenceKey,requestId,JSON.stringify(r)].map(safeCell_));
-    appendRows_(events,rows);
+    appendRows_(events,rows);if(typeof weeklyBump_==='function')weeklyBump_();
   }
   return {confirmed:true,records:confirmed,count:confirmed.length,inserted:toWrite.length};
 }
+
 function pinAttempt_(id,success) {
   const cache=CacheService.getScriptCache(),key='pin-'+id;
   const n=Number(cache.get(key)||0); if(n>=20) throw new Error('Troppi tentativi PIN per questo turno. Attendere 10 minuti o rivolgersi al tutor.');

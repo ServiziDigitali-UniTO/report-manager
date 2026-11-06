@@ -1,36 +1,40 @@
-# Collaudo prima dell'uso operativo
+# Collaudo della versione settimanale 3
 
-## Verifiche già eseguite sul pacchetto
+## Verifiche effettuate durante la preparazione
 
-- 20 test automatici locali, con Foglio Google e rete simulati: controlli di accesso, separazione dei ruoli, PIN errato, alterazione del turno, dati incompleti, scritture senza inserimenti parziali per errori di validazione, nominativo verificato sull'elenco del turno, orario server, ricevuta HMAC, note generali, reinvii e rettifiche, fasce distinte, assenza tutor non sovrascrivibile dallo studente, formule nei testi, finestra temporale, conferme mancanti, memoria locale non disponibile e scambio dei messaggi con controllo della finestra e dell’origine in un ambiente simulato.
-- Analisi sintattica e trasposizione TypeScript dei 25 file sorgente: nessun errore sintattico.
-- Controllo locale aggiuntivo TypeScript con dipendenze disponibili e dichiarazioni temporanee per quattro librerie non disponibili: nessun errore rilevato nel codice applicativo. Queste dichiarazioni temporanee **non sono incluse nel progetto** e non sostituiscono il controllo sulle librerie effettive.
-- Coerenza di `package.json` e `package-lock.json` verificata da npm in modalità offline; simulazione di `npm ci` riuscita.
-- Asset predisposti per sottocartelle GitHub Pages; eliminati CSV/PDF di esempio reali e riferimenti a Netlify. Le dipendenze e le integrità nel lock derivano dal progetto fornito, con aggiunta dei tipi React.
+- 43 test automatici locali, con Google Sheets e rete simulati. Comprendono regressioni del ricevitore v2, invio della credenziale tutor, trasporto diretto senza iframe del sito, pubblicazioni identiche, mancata attivazione dopo errore di staging, accessi limitati alle risorse, revoca e scadenza, QR senza PIN, finestra temporale server, ritardi, precedenza tutor, discrepanze, rimozione di prenotazioni già convalidate, ritiro di una settimana, concorrenza, idempotenza e trascrizione da cartaceo.
+- Controllo sintattico dei sorgenti TypeScript/TSX e controllo aggiuntivo con TypeScript disponibile localmente. Quattro dipendenze non disponibili sono state sostituite SOLO per questo controllo da dichiarazioni temporanee esterne al pacchetto: non è equivalente al controllo completo con le librerie effettive.
+- Coerenza del lock npm e simulazione offline di `npm ci` riuscite.
+- Prova della normalizzazione del CSV reale fornito: lette 3.941 righe, 31 settimane; 2.724 prenotazioni attive e 1.384 turni accettati dai validatori settimanali, senza errori. L'estrazione CSV è stata effettuata localmente; il normalizzatore esistente e i validatori server sono stati eseguiti con il risultato dell'estrazione. Nessuna riga reale è inclusa nei file consegnati o inviata a Google.
 
-## Verifiche non eseguite in questo ambiente
+## Limiti della verifica locale
 
-Il runtime non può scaricare tutte le dipendenze npm e non dispone di un browser di test installato. Non sono quindi stati eseguiti la **compilazione completa con le dipendenze effettive**, il collaudo grafico nel browser né il collegamento a una distribuzione Google reale. Non è stato letto o modificato il tuo Foglio.
+Il runtime di preparazione non può scaricare tutte le dipendenze npm e non dispone di browser installato. Non è stata eseguita una build completa con tutte le librerie effettive, né un collaudo grafico/browser o con una distribuzione Google reale. Non sono stati modificati il repository remoto o il Foglio dell'utente.
 
-Il workflow GitHub esegue `npm ci` e `npm run check` e pubblica soltanto dopo esito positivo. Il completamento del workflow **non sostituisce il collaudo Google e smartphone** descritto sotto. Non distribuire registri operativi prima di questo passaggio.
+GitHub Actions deve completare `npm ci` e `npm run check` prima della pubblicazione. Il workflow verde non sostituisce le prove browser/Google seguenti. In particolare il modulo compilato `tutor.js` caricato da HtmlService va provato realmente.
 
-## Procedura con dati fittizi
+## Prove da completare con dati fittizi
 
-Usare un Foglio di prova separato, stesse proprietà script e un'origine Pages autorizzata.
+1. Conservare il backup e installare la versione 3 su un Foglio di prova. Verificare che le due schede v2 siano preservate e che siano create le tre nuove schede.
+2. Attendere il workflow GitHub verde; controllare che `tutor.js` e `tutor.css` siano disponibili nella radice del sito.
+3. Aprire la gestione centrale, caricare il CSV fittizio e pubblicare una settimana. Controllare giorni, risorse e nominativi. Ripetere la pubblicazione senza cambiamenti: non devono apparire duplicati.
+4. Aggiungere e rimuovere prenotazioni, ricaricare il CSV completo e verificare il confronto. Una rimozione con esito già registrato deve richiedere conferma; lo storico deve rimanere e il tutor deve ricevere una segnalazione.
+5. Creare due link riservati a risorse diverse. Ogni link deve leggere e modificare soltanto le risorse autorizzate. Provare un accesso revocato e uno scaduto: devono essere rifiutati anche durante il polling.
+6. Su telefono aprire l'area tutor, verificare giorno corrente, selettore risorsa, stati e leggibilità in verticale. Controllare almeno Chrome Android e Safari iPhone.
+7. Aprire anche l'alternativa diretta Google: deve usare la stessa interfaccia con sincronizzazione e comandi. Ripetere il test con account Google attivi, in particolare sul dispositivo che aveva dato errore. Non considerare risolta questa incompatibilità sulla sola base dei test simulati.
+8. Da due dispositivi dello stesso tutor aprire un turno. Il primo aggiorna una presenza; il secondo prova a modificarla prima del proprio aggiornamento. Deve comparire un conflitto che richiede verifica, senza sovrascrittura silenziosa.
+9. Confermare presente, assente e ritardo con minuti effettivi; modificare note; aggiungere un fuori elenco con matricola e motivazione. Verificare righe, orario server e profilo nel Foglio.
+10. Dal QR studente di un turno non già convalidato effettuare un'autoconvalida nella finestra temporale ammessa. Deve essere richiesta soltanto la selezione del nominativo, nessun PIN. Verificare ricevuta server e successiva comparsa nella schermata tutor.
+11. Correggere dal tutor un presente autoconvalidato in assente o ritardatario. Verificare la segnalazione di discrepanza e la conservazione dello storico. Lo studente non deve annullare l'assenza o eliminare i minuti di ritardo.
+12. Interrompere la rete durante caricamento e salvataggio. Non deve apparire una conferma positiva senza risposta. Non è prevista una coda offline. Al ritorno della rete verificare l'esito dal server e usare il reinvio idempotente se necessario.
+13. Lasciare due aree aperte per alcuni minuti: gli aggiornamenti devono arrivare entro il ciclo di polling, salvo errori/limiti di Google. Passare ad altra scheda e tornare: deve avvenire un aggiornamento.
+14. Da Emergenza preparare la stampa settimanale. Verificare che includa tutti i nominativi delle risorse selezionate, anche chi è già convalidato; i fuori elenco devono essere indicati. Verificare firme, impaginazione su più pagine, QR leggibili, data/versione e link al registro tutor. Il link stampato non contiene la credenziale riservata del tutor.
+15. Dal PDF salvato con Chrome/Edge provare QR e collegamenti. Registrare gli esiti da cartaceo con il relativo comando e un riferimento nelle note: il metodo deve essere `CARTACEA`.
+16. Verificare un vecchio QR v2 e un vecchio report prima di passare ai dati operativi. Il vecchio flusso mantiene PIN e codice tutor.
 
-1. **Build:** verificare il verde del workflow GitHub. Aprire il sito, controllare logo, favicon, pannelli, CSV, filtri, statistiche ed esportazione Excel. L'indirizzo deve comprendere la sottocartella del repository se prevista.
-2. **Configurazione mancante:** lasciare temporaneamente il webhook vuoto in un ambiente di prova: i QR devono mostrare l'errore, la stampa digitale deve essere bloccata e nessuna presenza deve risultare registrata.
-3. **Segreteria:** credenziale errata deve dare errore; credenziale corretta deve confermare accesso al Foglio. Verificare la creazione delle due schede. Controllare che la vecchia scheda sia stata conservata separatamente.
-4. **Turni distinti:** importare iscrizioni fittizie della stessa risorsa su due fasce della giornata. Verificare gruppi separati, due coppie di QR e PIN per turno. Ogni studente deve avere una matricola.
-5. **Stampa:** attendere tutti i QR pronti, salvare un PDF, verificare impaginazione e scansione. Controllare che i QR puntino a GitHub, non all'ambiente locale o a Netlify.
-6. **Altro telefono:** da un telefono senza configurazioni pregresse aprire il QR studente. Il turno deve caricarsi dal Foglio senza chiedere l'URL del webhook. Un vecchio QR deve essere rifiutato esplicitamente.
-7. **PIN:** il PIN errato non deve registrare righe. Il PIN corretto, entro la finestra temporale del turno, deve restituire una ricevuta e produrre l'evento nel Foglio. Il tentativo fuori finestra deve essere rifiutato. Verificare almeno un turno a cavallo di mezzanotte se usato realmente.
-8. **Tutor:** aprire il QR tutor, provare il codice riservato errato e poi quello corretto. Inserire il nome tutor, un presente, un ritardo con minuti positivi, un assente, una nota individuale e una nota generale. Verificare esiti e note nel Foglio. Aggiungere un fuori elenco con matricola.
-9. **Rettifica:** la segreteria aggiorna dal Foglio e modifica un esito. La nuova riga va nello storico; nel report corrente deve comparire soltanto l'ultimo esito. Un'autoconvalida successiva non deve annullare l'assenza attestata dal tutor.
-10. **Rete interrotta:** interrompere la rete durante l'invio; non deve comparire una ricevuta positiva senza conferma. Ripristinare e riprovare con gli stessi dati. Verificare che non compaiano due eventi identici. Se l'esito resta dubbio consultare il Foglio e il report aggiornato.
-11. **Invii contemporanei:** due telefoni inviano presenze diverse nello stesso momento. Entrambe devono risultare presenti nello storico, senza sovrascritture.
-12. **Riepilogo centrale:** su un terzo dispositivo della segreteria inserire la credenziale e usare «Aggiorna dal Foglio». Devono apparire le presenze dei telefoni precedenti e le righe CSV ancora prive di convalida devono dire «Da verificare».
-13. **Browser:** eseguire almeno una prova con Safari su iPhone e una con Chrome su Android. Il collegamento usa una pagina Apps Script incorporata; verificare eventuali limitazioni del browser o del dominio Workspace sui contenuti incorporati e sull'accesso anonimo. Un blocco deve produrre un errore, mai una falsa conferma.
-14. **Uscita:** terminare l'accesso segreteria e riaprire la scheda. Consultazione centrale e preparazione di nuovi QR devono richiedere la credenziale. Il codice tutor non deve comparire nella configurazione pubblica o nei QR.
+## Condizioni operative
 
-Registrare data, browser, esito e eventuali anomalie di questa prova. Solo dopo il collaudo sostituire il Foglio di prova con quello operativo, aggiornando proprietà e distribuzione, e ripetere una registrazione fittizia concordata prima dell'avvio.
+- Il QR condiviso non prova chi lo sta usando o la presenza fisica; lo studente deve selezionare il proprio nominativo. Il tutor resta il verificatore dell'esito.
+- Il link tutor è trasferibile. Il nome del profilo non equivale ad autenticazione personale di chi lo usa.
+- La stampa richiede dati disponibili online al momento della preparazione. Un PDF preventivo può essere conservato secondo le prassi del reparto.
+- Polling e chiamate Google sono soggetti a quote e disponibilità. Prima di un uso su molte risorse contemporanee misurare tempi e carico.

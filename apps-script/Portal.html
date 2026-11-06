@@ -1,0 +1,7 @@
+<!doctype html><html lang="it"><head><base target="_blank"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Report Manager — Registro</title></head><body><div id="root"><p style="padding:2rem;font-family:system-ui">Caricamento del registro…</p></div>
+<script>
+window.__RM_BOOTSTRAP__ = <?!= portalConfig ?>;
+window.__RM_NATIVE_RPC__=function(request){return new Promise(function(resolve,reject){google.script.run.withSuccessHandler(resolve).withFailureHandler(function(){reject(new Error('Comunicazione con Google interrotta. Aggiornare la schermata prima di riprovare.'));}).dispatch(request);});};
+const css=document.createElement('link');css.rel='stylesheet';css.href=window.__RM_BOOTSTRAP__.appUrl+'tutor.css?v=3.0.0';document.head.appendChild(css);
+const script=document.createElement('script');script.type='module';script.src=window.__RM_BOOTSTRAP__.appUrl+'tutor.js?rm='+Date.now();script.onerror=function(){document.getElementById('root').textContent='Impossibile caricare il registro. Verificare che la nuova versione sia pubblicata su GitHub Pages e che APP_URL sia corretto.';};document.body.appendChild(script);
+</script></body></html>

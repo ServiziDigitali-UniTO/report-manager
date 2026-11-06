@@ -1,48 +1,42 @@
-# Report Manager — versione 2 per GitHub Pages
+# Report Manager 3 — registri settimanali online
 
-Web app statica React/TypeScript per elaborare report Affluences, produrre registri, consultare statistiche e raccogliere presenze. Nessun database e nessuna funzione Netlify. I CSV vengono elaborati nel browser; solo i turni digitali preparati e le presenze vengono inviati al Foglio Google configurato con Apps Script.
+Evoluzione dello stesso progetto React/TypeScript, pubblicabile su GitHub Pages o altro hosting statico HTTPS. CSV elaborati nel browser, Foglio Google come archivio condiviso, nessun database esterno, nessuna funzione Netlify. Non è prevista una modalità offline.
 
-**Prima installazione: leggere [PUBBLICAZIONE.md](PUBBLICAZIONE.md).** Il pacchetto è predisposto per pubblicazione e collaudo: non contiene l'ID del tuo Foglio, l'URL della distribuzione o credenziali reali. Il collegamento reale a Google va collaudato prima dell'uso operativo; vedere [COLLAUDO.md](COLLAUDO.md).
+**Aggiornamento dell'installazione esistente: iniziare da [AGGIORNAMENTO_V3.md](AGGIORNAMENTO_V3.md).** Il pacchetto contiene già gli URL pubblici configurati durante il lavoro. Non contiene password o dati personali reali del CSV esaminato.
 
-## Avvio e verifica
+## Nuovo percorso operativo
 
-Node 24 LTS, npm:
+La segreteria carica il CSV Affluences, verifica e pubblica una settimana sabato–venerdì. La pubblicazione rende disponibili i turni nelle cinque aree tutor: Ospedale, Azienda Zootecnica, Skill Lab, Buiatri e IZS.
+
+Ogni tutor apre un collegamento riservato, limitato alle risorse assegnate e valido per il numero di giorni stabilito dalla segreteria. Non deve inserire la password amministrativa o verificare manualmente il collegamento. I dati si aggiornano all'apertura, ogni 30 secondi mentre la pagina è visibile e al ritorno alla pagina. Ogni modifica richiede la conferma del server.
+
+Il QR studente è comune al singolo turno, senza PIN: lo studente seleziona il proprio nome e conferma. Il codice QR non autentica l'identità o la presenza fisica. Il tutor può verificare/correggere gli esiti; le discrepanze rispetto all'autoconvalida sono evidenziate.
+
+La stampa settimanale è nel menu **Emergenza e accesso**. Produce un registro per firme autografe con QR per turno e data/versione della pubblicazione. Deve essere preparata mentre la rete è disponibile. Gli esiti del cartaceo si trascrivono da **Note / rettifica → Trascrizione da registro cartaceo di emergenza**, indicando il riferimento nelle note.
+
+## Compatibilità
+
+Le funzioni precedenti rimangono in **Strumenti esistenti e report**. `RM_Turni` e `Presenze_Tirocini` mantengono intestazioni e dati. I vecchi QR continuano a usare il flusso v2 con PIN e codice tutor; i nuovi QR settimanali usano il flusso senza PIN. Non confondere i due tipi di QR.
+
+Vengono aggiunte tre schede: `RM_Settimane`, `RM_Turni_Settimanali`, `RM_Accessi`. Nessun archivio viene cancellato. I nuovi turni sono pubblicati solo dal comando esplicito della segreteria; negli strumenti precedenti resta il comportamento di preparazione dei vecchi QR durante l'anteprima digitale.
+
+## Accesso web e alternativa Google
+
+- Sul sito statico: area tutor `#area/<area>?access=…`, studente `#presenza?shift=…&token=…`.
+- Alternativa diretta: Apps Script serve `Portal.html`, che carica la stessa interfaccia compilata `tutor.js` da GitHub Pages e usa direttamente `google.script.run`.
+
+L'alternativa riduce la dipendenza dal collegamento incorporato tra il sito e Google. **Non è una garanzia contro tutti i problemi di sessione Google**: va verificata sui dispositivi che hanno dato errore. Vedere [COLLAUDO.md](COLLAUDO.md).
+
+## Sviluppo
+
+Node 24 e npm:
 
 ```sh
 npm ci
 npm run dev
-```
-
-```sh
 npm run check
-npm run preview
 ```
 
-`check` esegue TypeScript, test automatici e compilazione. Il workflow GitHub blocca la pubblicazione se una di queste verifiche fallisce. La cartella `dist` è il sito statico, trasferibile su altri hosting HTTPS. Il repository contiene i sorgenti e un lock npm; `node_modules` non va caricato.
+`check` esegue TypeScript, test e build. Il workflow `.github/workflows/pages.yml` pubblica solo se queste verifiche riescono. Per altri hosting caricare il contenuto di `dist`, incluso `tutor.js` e i relativi asset.
 
-## Cartelle
-
-- `src`: applicazione e componenti grafici.
-- `public/report-manager.config.json`: URL pubblico Apps Script e URL definitivo dell'app.
-- `apps-script`: `Code.gs`, `Bridge.html`, `appsscript.json`, da copiare nel progetto Apps Script.
-- `.github/workflows/pages.yml`: compilazione e pubblicazione automatica su Pages.
-- `tests`: prove sul ricevitore e sul servizio di invio, con Google e rete simulati.
-
-## Presenze
-
-La segreteria prepara i QR usando una credenziale riservata. Apps Script conserva lo snapshot del turno, genera il PIN di sei cifre e i codici distinti per i due ruoli. Gli studenti possono convalidare soltanto iscrizioni già in elenco. Il tutor usa un ulteriore codice riservato per sbloccare il PIN e inviare l'appello; può aggiungere fuori elenco, indicando la matricola. Le rettifiche della segreteria richiedono la credenziale amministrativa.
-
-Il Foglio `Presenze_Tirocini` è uno **storico degli eventi**, non una tabella da contare direttamente come presenze uniche. Il comando «Aggiorna dal Foglio» restituisce l'ultimo esito per data, risorsa, fascia e matricola. Gli invii del tutor e della segreteria prevalgono sulle autoconvalide successive. Le righe non ancora convalidate sono indicate «Da verificare».
-
-La cache locale non è un database condiviso e non sostituisce il Foglio. «Registrazione confermata» compare solo dopo la risposta del ricevitore. In caso di conferma non ricevuta si può riprovare con gli stessi dati, senza generare una seconda scrittura dello stesso invio.
-
-## Limiti da conoscere
-
-- La disponibilità delle presenze centralizzate richiede rete e Apps Script. Le funzioni locali sui CSV restano utilizzabili senza collegamento a Google dopo il caricamento dell'app; non è un'app offline installabile.
-- Il PIN condiviso non autentica individualmente lo studente e non prova la posizione fisica. Il codice tutor è condiviso e il nome tutor resta dichiarato. Per un'identificazione personale servirebbe un diverso sistema di autenticazione.
-- Le ricevute hanno un HMAC prodotto dal server e un orario server. Non sono una firma digitale personale.
-- I vecchi QR della versione precedente vanno rigenerati. Anche i QR che puntano a Netlify vanno sostituiti quando si passa a GitHub.
-- Ogni turno ammette al massimo 150 studenti e deve avere matricole e fascia `HH:mm - HH:mm`. Turni più grandi vanno suddivisi.
-- Il Foglio cresce con le rettifiche. Le letture attuali percorrono lo storico: per volumi elevati occorre misurare le prestazioni e pianificare archiviazione e backup senza eliminare arbitrariamente le righe.
-
-I dati dimostrativi inclusi sono fittizi. Non caricare sul repository pubblico CSV reali, PDF compilati, schermate con dati personali o credenziali.
+Il runtime usato per preparare questo pacchetto non può scaricare tutte le dipendenze e non ha un browser installato: la build completa e il collaudo browser/Google reale restano da effettuare, come indicato in `COLLAUDO.md`. I test locali verificano le regole e i protocolli con servizi simulati.

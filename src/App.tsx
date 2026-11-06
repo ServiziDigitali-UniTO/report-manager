@@ -1,3 +1,5 @@
+import {WeeklyRouter} from './weekly/WeeklyRouter';
+import {WeeklyAdmin} from './weekly/WeeklyAdmin';
 import { publicAsset } from './utils/assets';
 import React, { useState, useMemo, useEffect } from 'react';
 import { DEFAULT_AFFLUENCES_CSV } from './data/defaultCsv';
@@ -17,7 +19,14 @@ import { resolveShift } from './services/shifts';
 import { ValidationShiftPayload } from './types';
 import { ShieldCheck, CheckCircle2 } from 'lucide-react';
 
-export default function App() {
+export default function App(){
+  const [hash,setHash]=useState(window.location.hash);
+  useEffect(()=>{const update=()=>setHash(window.location.hash);window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update);},[]);
+  if(hash.startsWith('#area/')||hash.startsWith('#presenza'))return <WeeklyRouter/>;
+  return <LegacyApp/>;
+}
+function LegacyApp() {
+  const [weeklyAdminOpen,setWeeklyAdminOpen]=useState(true);
   const [activeTab, setActiveTab] = useState<'registers' | 'statistics' | 'uploader' | 'studentHistory' | 'shiftReport'>('registers');
   const [csvContent, setCsvContent] = useState<string>(DEFAULT_AFFLUENCES_CSV);
   const [fileName, setFileName] = useState<string>('Report_Affluences_Sample.csv');
@@ -225,16 +234,20 @@ export default function App() {
         {statusAnnouncement}
       </div>
 
+      <div className="print:hidden p-3 flex flex-wrap gap-2 bg-white border-b">
+        <button className="px-4 py-2 rounded bg-[#2C4437] text-white" onClick={()=>setWeeklyAdminOpen(true)}>Pubblicazione settimanale e aree tutor</button>
+        <button className="px-4 py-2 rounded border" onClick={()=>setWeeklyAdminOpen(false)}>Strumenti esistenti e report</button>
+      </div>
       {/* Navbar Header */}
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab)=>{setWeeklyAdminOpen(false);setActiveTab(tab);}}
         totalRecordsCount={totalRecordsCount}
         uniqueResourcesCount={uniqueResources.length}
         dateRangeStr={dateRangeStr}
         fileName={fileName}
         isUsingSampleData={isUsingSampleData}
-        onUploadClick={() => setActiveTab('uploader')}
+        onUploadClick={() => {setWeeklyAdminOpen(false);setActiveTab('uploader');}}
         onOpenAccessibility={() => setIsAccessibilityModalOpen(true)}
       />
 
@@ -251,11 +264,12 @@ export default function App() {
           tabIndex={0}
           className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#3E5C4B]/50 rounded-xl"
         >
-          {activeTab === 'registers' && <RegisterGenerator records={records} />}
+          {weeklyAdminOpen&&<WeeklyAdmin records={records} sourceName={fileName} onUpload={handleCsvLoaded}/>}
+          {!weeklyAdminOpen&&activeTab === 'registers' && <RegisterGenerator records={records} />}
 
-          {activeTab === 'statistics' && <StatisticsDashboard records={records} />}
+          {!weeklyAdminOpen&&activeTab === 'statistics' && <StatisticsDashboard records={records} />}
 
-          {activeTab === 'uploader' && (
+          {!weeklyAdminOpen&&activeTab === 'uploader' && (
             <CsvUploader
               onCsvLoaded={handleCsvLoaded}
               onResetToDefault={handleResetToDefault}
@@ -268,14 +282,14 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'studentHistory' && (
+          {!weeklyAdminOpen&&activeTab === 'studentHistory' && (
             <StudentHistory
               records={records}
               onNavigateToUploader={() => setActiveTab('uploader')}
             />
           )}
 
-          {activeTab === 'shiftReport' && (
+          {!weeklyAdminOpen&&activeTab === 'shiftReport' && (
             <div className="max-w-7xl mx-auto px-4 py-8">
               <ShiftResourceReport
                 records={records}

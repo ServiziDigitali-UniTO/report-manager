@@ -1,1 +1,2 @@
-export function publicAsset(name:string){return new URL(import.meta.env.BASE_URL+name,document.baseURI).href;}
+import {appUrl} from '../services/bridge';
+export function publicAsset(name:string){return new URL(name,appUrl()).href;}

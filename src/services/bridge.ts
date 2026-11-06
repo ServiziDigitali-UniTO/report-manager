@@ -1,7 +1,9 @@
 /** Portable HTTPS bridge. No hosting-provider API, no no-cors requests. */
 export interface PublicConfig { webhookUrl: string; appUrl: string }
+declare global {interface Window {__RM_BOOTSTRAP__?:PublicConfig&{initialHash:string};__RM_NATIVE_RPC__?:(request:any)=>Promise<any>}}
 let publicConfig: PublicConfig = {webhookUrl:'',appUrl:''};
 export async function loadPublicConfig() {
+  if(window.__RM_BOOTSTRAP__){publicConfig={webhookUrl:window.__RM_BOOTSTRAP__.webhookUrl,appUrl:window.__RM_BOOTSTRAP__.appUrl};return;}
   const response=await fetch(new URL('report-manager.config.json',document.baseURI),{cache:'no-store'});
   if(!response.ok) throw new Error('Configurazione pubblica non disponibile.');
   const data=await response.json();
@@ -22,7 +24,7 @@ window.addEventListener('message',event=>{
   if(!active || event.source!==active.source || event.origin!==active.origin || !m || m.protocol!=='RM2'||m.channel!==active.channel||m.type!=='response') return;
   const item=pending.get(m.id);if(!item)return;
   clearTimeout(item.timer);pending.delete(m.id);
-  if(m.result?.status==='success') item.resolve(m.result); else item.reject(new Error(m.result?.message||'Registrazione non confermata.'));
+  if(m.result?.status==='success') item.resolve(m.result); else {const e=new Error(m.result?.message||'Operazione non confermata.');Object.assign(e,{code:m.result?.code||'ERROR'});item.reject(e);}
 });
 async function connect(url:string) {
   if(active?.url===url) return;
@@ -50,11 +52,18 @@ export function rpc(action:string,data:any={},auth:any={},overrideUrl?:string):P
   const run=async()=>{
     const url=overrideUrl||publicConfig.webhookUrl;
     if(!url) throw new Error('Collegamento non configurato. Compilare report-manager.config.json prima della pubblicazione.');
+    const origin=window.__RM_NATIVE_RPC__?new URL(publicConfig.appUrl).origin:location.origin;
+    const request=JSON.parse(JSON.stringify({action,data,auth,origin}));
+    if(window.__RM_NATIVE_RPC__){
+      const result:any=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Object.assign(new Error('Risposta Google non ricevuta. Aggiornare prima di riprovare.'),{code:'TRANSPORT'})),45000);window.__RM_NATIVE_RPC__!(request).then(v=>{clearTimeout(timer);resolve(v);},e=>{clearTimeout(timer);reject(e);});});
+      if(result?.status!=='success')throw Object.assign(new Error(result?.message||'Operazione non confermata.'),{code:result?.code||'ERROR'});
+      return result;
+    }
     await connect(url);const bridge=active!;
     return new Promise((resolve,reject)=>{
       const id=crypto.randomUUID();const timer=setTimeout(()=>{pending.delete(id);active?.frame.remove();active=null;reject(new Error('Conferma non ricevuta. La richiesta potrebbe essere stata registrata: riprovare senza cambiare i dati.'));},45000);
       pending.set(id,{resolve,reject,timer});
-      (bridge.source as Window).postMessage({protocol:'RM2',channel:bridge.channel,type:'request',id,request:{action,data,auth}},bridge.origin);
+      (bridge.source as Window).postMessage({protocol:'RM2',channel:bridge.channel,type:'request',id,request},bridge.origin);
     });
   };
   const result=queue.then(run,run);queue=result.then(()=>undefined,()=>undefined);return result;
