@@ -234,9 +234,9 @@ function LegacyApp() {
         {statusAnnouncement}
       </div>
 
-      <div className="print:hidden p-3 flex flex-wrap gap-2 bg-white border-b">
+      <div className="print:hidden p-3 flex flex-wrap gap-2 bg-white text-stone-900 border-b border-stone-200 dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700">
         <button className="px-4 py-2 rounded bg-[#2C4437] text-white" onClick={()=>setWeeklyAdminOpen(true)}>Pubblicazione settimanale e aree tutor</button>
-        <button className="px-4 py-2 rounded border" onClick={()=>setWeeklyAdminOpen(false)}>Strumenti esistenti e report</button>
+        <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>setWeeklyAdminOpen(false)}>Strumenti esistenti e report</button>
       </div>
       {/* Navbar Header */}
       <Header
