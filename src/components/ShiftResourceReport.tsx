@@ -346,9 +346,9 @@ export const ShiftResourceReport: React.FC<ShiftResourceReportProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="p-3 border rounded bg-white text-xs print:hidden space-y-2">
+      <div className="p-3 border rounded bg-white text-stone-900 border-stone-200 dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700 text-xs print:hidden space-y-2">
         <p>Le righe CARTACEA provengono dalle prenotazioni e non attestano una presenza digitale. Per consultare gli invii dagli altri dispositivi aggiornare dal Foglio.</p>
-        <button className="border rounded p-2" onClick={async()=>{try{const records=await refreshCentralRecords();setStoredValidations(records);setSaveSuccessMsg('Presenze aggiornate dal Foglio.');}catch(e:any){setSaveSuccessMsg(e.message);}}}>Aggiorna dal Foglio Google</button>
+        <button className="border rounded p-2 bg-stone-100 text-stone-900 border-stone-300 dark:bg-stone-800 dark:text-stone-100 dark:border-stone-600" onClick={async()=>{try{const records=await refreshCentralRecords();setStoredValidations(records);setSaveSuccessMsg('Presenze aggiornate dal Foglio.');}catch(e:any){setSaveSuccessMsg(e.message);}}}>Aggiorna dal Foglio Google</button>
       </div>
       {/* Top Filter and Search Control Bar */}
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-xs print:hidden space-y-4">
@@ -579,7 +579,7 @@ export const ShiftResourceReport: React.FC<ShiftResourceReportProps> = ({
                 className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-xs page-break-inside-avoid"
               >
                 {/* Shift Group Header */}
-                <div className="bg-stone-50 dark:bg-stone-850 px-5 py-3.5 border-b border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="bg-stone-50 dark:bg-stone-800 px-5 py-3.5 border-b border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-extrabold text-stone-900 dark:text-white text-sm sm:text-base">
