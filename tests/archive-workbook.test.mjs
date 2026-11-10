@@ -8,4 +8,21 @@ async function archive(){return (await m.mergeExport(m.emptyArchive(),{format:'R
 test('real XLSX round-trip preserves Unicode, chunking, IDs and events',{skip},async()=>{const a=await archive(),bytes=await w.archiveToBytes(a);assert.equal(bytes[0],80);assert.deepEqual(await w.archiveFromBytes(bytes),a);const wb=XLSX.read(bytes,{type:'array'});assert.equal(wb.Workbook.Sheets.find(s=>s.name==='_RM_Dati').Hidden,1);assert.ok(!wb.Sheets.Eventi.K2.f);});
 test('damaged machine sheet is rejected instead of partially imported',{skip},async()=>{const wb=XLSX.read(await w.archiveToBytes(await archive()),{type:'array'});wb.Sheets._RM_Dati.B2.v+='tamper';const bad=XLSX.write(wb,{type:'array',bookType:'xlsx'});await assert.rejects(()=>w.archiveFromBytes(bad),/integrità/);});
 test('arbitrary spreadsheets cannot be mistaken for archives',{skip},async()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Data','Studente'],['2026-11-09','TEST']]),'Presenze');await assert.rejects(()=>w.archiveFromBytes(XLSX.write(wb,{type:'array',bookType:'xlsx'})),/non è un archivio/);});
-test('legacy v3.1 workbook is read and upgraded to schema 2 without changing its records',{skip},async()=>{const old=await archive();old.schema=1;delete old.bookings;delete old.periods;delete old.closures;const json=m.canonical(old),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['RM_ARCHIVE',1,await m.sha256(json)],...[...Array(Math.ceil(json.length/10000))].map((_,i)=>[i,json.slice(i*10000,(i+1)*10000)])]),'_RM_Dati');const upgraded=await w.archiveFromBytes(XLSX.write(wb,{type:'array',bookType:'xlsx'}));assert.equal(upgraded.schema,2);assert.equal(upgraded.events[0].id,old.events[0].id);});
+test('legacy v3.1 workbook is read and upgraded to schema 2 without changing its records',{skip},async()=>{
+  const old=await archive();old.schema=1;delete old.bookings;delete old.periods;delete old.closures;
+  const json=m.canonical(old),wb=XLSX.utils.book_new();
+  // Match the v3.1 writer: XML cells must never contain half a surrogate pair.
+  // Fixed 10,000-code-unit slices can corrupt the Unicode fixture before import.
+  const chunks=[['RM_ARCHIVE',1,await m.sha256(json)]];let index=0;
+  for(let offset=0;offset<json.length;){
+    let end=Math.min(offset+28000,json.length);
+    const last=json.charCodeAt(end-1);
+    if(end<json.length&&last>=0xD800&&last<=0xDBFF)end--;
+    chunks.push([index++,json.slice(offset,end)]);offset=end;
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(chunks),'_RM_Dati');
+  const upgraded=await w.archiveFromBytes(XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+  assert.deepEqual(upgraded,m.validateArchive(old));
+  assert.equal(upgraded.events[0].record.studentName,old.events[0].record.studentName);
+  assert.equal(upgraded.events[0].record.note,old.events[0].record.note);
+});
