@@ -1,0 +1,12 @@
+REPORT MANAGER 4.0 — verifiche effettive, 10 novembre 2026
+
+Node test runner: 91 test totali; 87 superati; 4 saltati; 0 falliti.
+I quattro test XLSX richiedono la dipendenza xlsx, non installabile qui.
+Sintassi: 42 sorgenti TypeScript/TSX e i quattro file Apps Script verificati.
+
+Installazione npm ci: incompleta, HTTP 403 sul registro npm (yargs-parser 18.1.3).
+Typecheck completo, build Vite, round-trip XLSX reale e collaudo browser/Google NON eseguiti.
+Il workflow GitHub incluso richiede npm run check prima della pubblicazione.
+Nessuna distribuzione o modifica dei dati Google è stata eseguita da questo ambiente.
+
+Pulizia dati inizialmente disabilitata. Prima dell’abilitazione seguire AGGIORNAMENTO_V4.md e COLLAUDO_V4.md, anche per le vecchie distribuzioni attive.

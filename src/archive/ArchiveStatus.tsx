@@ -1,0 +1,3 @@
+import React,{useEffect,useState} from 'react';
+import {driveSession} from './driveSession';
+export function ArchiveStatus(){const [status,setStatus]=useState({...driveSession});useEffect(()=>{const update=()=>setStatus({...driveSession});window.addEventListener('rm-drive-state',update);return()=>window.removeEventListener('rm-drive-state',update);},[]);return <span className="w-full text-xs" role="status">{status.error?'Archivio Drive non aperto: '+status.error:status.loaded?(status.fileName?'File Excel Drive aperto: '+status.fileName:'Nessun file Drive ancora gestito'):"Archivio Drive non ancora aperto. L’apertura avviene dopo l’accesso amministrativo; puoi anche caricare un Excel manualmente."}</span>;}

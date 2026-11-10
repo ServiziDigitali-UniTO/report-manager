@@ -392,7 +392,7 @@ export function parseAffluencesCsv(csvText: string): BookingRecord[] {
       id: `${bookingCode || index}_${dateStr}_${index}`,
       resourceId,
       resourceName,
-      categoryKey: categorizeResource(resourceName),
+      categoryKey: ['133367','133368','133369','133370'].includes(resourceId)?'azienda_zootecnica':categorizeResource(resourceName),
       bookedByEmail,
       peopleCount: parseInt(peopleCountRaw || '1', 10) || 1,
       bookingMadeAt,

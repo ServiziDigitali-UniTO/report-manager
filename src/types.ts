@@ -92,6 +92,11 @@ export interface RegisterTemplateSettings {
   showResourceColumn?: boolean;
   showNameColumn?: boolean;
   showSignatureColumn?: boolean;
+  showEntrySignatureColumn?: boolean;
+  showExitSignatureColumn?: boolean;
+  showEntryTimeColumn?: boolean;
+  showExitTimeColumn?: boolean;
+  showWorkedHoursColumn?: boolean;
   signatureBoxWidth: string; // e.g. '180px' or 'auto'
   groupByDay: boolean;
   compactMode: boolean;

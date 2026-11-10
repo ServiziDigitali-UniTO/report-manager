@@ -3,8 +3,8 @@ import {rpc,getAdminPassword,getPublicConfig,appUrl} from './bridge';
 export const AREAS:Record<string,string>={ospedale:'Ospedale Veterinario Universitario',azienda_zootecnica:'Azienda Zootecnica',skill_lab:'Skill Lab',buiatri:'Buiatri',izs:'IZS'};
 export interface WeeklyState {id:string;status:AttendanceStatus;delayMinutes:number;note:string;validatedAt:string;validatedBy:string;validationMode:string}
 export interface WeeklyStudent {id:string;name:string;matricola:string;bookingCode?:string;state:WeeklyState|null;discrepant?:boolean;manual?:boolean}
-export interface WeeklyShift {id:string;weekStart:string;resourceId:string;area:string;resource:string;date:string;timeSlot:string;students:WeeklyStudent[];studentUrl:string;directStudentUrl:string}
-export interface WeeklyBoard {revision:string;serverDate:string;serverTime:string;area:string;areaLabel:string;accessLabel:string;weekStart:string;weekEnd:string;weeks:{start:string;end:string}[];publication:{version:number;updatedAt:string}|null;shifts:WeeklyShift[];removedWithPresence:number}
+export interface WeeklyShift {id:string;weekStart:string;resourceId:string;area:string;resource:string;date:string;timeSlot:string;students:WeeklyStudent[];concludedAt?:string;studentUrl:string;directStudentUrl:string}
+export interface WeeklyBoard {unitState?:string;revision:string;serverDate:string;serverTime:string;area:string;areaLabel:string;accessLabel:string;weekStart:string;weekEnd:string;weeks:{start:string;end:string}[];publication:{version:number;updatedAt:string}|null;shifts:WeeklyShift[];removedWithPresence:number}
 export interface WeeklyPreview {weekStart:string;weekEnd:string;turns:number;bookings:number;unchanged:boolean;expectedPublicationId:string|null;added:number;removed:number;removedValidated:number;areas:{id:string;label:string;turns:number;bookings:number}[]}
 export interface ResourceDefinition {name:string;area:string;archived?:boolean}
 export function weekStart(date:string){const d=new Date(date+'T12:00:00Z');const day=d.getUTCDay();d.setUTCDate(d.getUTCDate()-(day===6?0:day+1));return d.toISOString().slice(0,10);}
@@ -12,7 +12,7 @@ export function addDays(date:string,n:number){const d=new Date(date+'T12:00:00Z'
 export function italianDate(date:string){return new Date(date+'T12:00:00Z').toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});}
 export function todayRome(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
 export function buildWeek(records:BookingRecord[],start:string){
-  const selected=records.filter(r=>weekStart(r.dateStr)===start),active=selected.filter(r=>!r.isCancelled),map=new Map<string,any>();
+  const selected=records.filter(r=>weekStart(r.dateStr)===start&&!['133367','133368','133369','133370'].includes(r.resourceId)),active=selected.filter(r=>!r.isCancelled),map=new Map<string,any>();
   let missingMatricola=0;
   active.forEach(r=>{
     const timeSlot=`${r.startTimeStr.slice(0,5)} - ${r.endTimeStr.slice(0,5)}`,key=JSON.stringify([r.resourceId,r.dateStr,timeSlot]);

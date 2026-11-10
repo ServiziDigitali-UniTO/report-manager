@@ -20,10 +20,10 @@ function archiveSnapshot_(){
   const events=weeklyRows_(t.events,18).filter(r=>r[17]).map(row=>{
     const r=JSON.parse(row[17]);
     // Explicit allowlist: never export PINs, bearer links, tutor/admin passwords or signing secrets.
-    const record={};['id','date','resource','timeSlot','studentName','matricola','bookingCode','status','delayMinutes','validationMode','validatedAt','validatedBy','note','tutorNotes','isManualIntegration','securityHash','requestId','presenceKey','weeklyShiftId','weeklyStudentId','weeklyArea','resourceId'].forEach(k=>{if(r[k]!==undefined)record[k]=r[k];});
+    const record={};['id','date','resource','timeSlot','studentName','matricola','bookingCode','status','delayMinutes','validationMode','validatedAt','validatedBy','note','tutorNotes','isManualIntegration','securityHash','requestId','presenceKey','weeklyShiftId','weeklyStudentId','weeklyArea','resourceId','periodId','periodStart','periodEnd'].forEach(k=>{if(r[k]!==undefined)record[k]=r[k];});
     return {sourceId,id:r.id,record};
   });
-  return {format:'RM_EXPORT',schema:1,sourceId,exportedAt:new Date().toISOString(),shifts,events,publications};
+  return {format:'RM_EXPORT',schema:1,sourceId,exportedAt:new Date().toISOString(),shifts,events,publications,periods:typeof v4Periods_==='function'?v4Periods_(true):[]};
 }
 function archiveFolder_(){
   const id=props_().getProperty('ARCHIVE_FOLDER_ID')||'';
@@ -40,7 +40,7 @@ function archiveDriveRead_(){
   const folder=archiveFolder_(),file=archiveLatest_(folder);
   if(!file)return {status:'success',fileId:'',url:'',base64:''};
   if(file.getSize()>6*1024*1024)throw new Error('Archivio oltre 6 MB: scaricarlo da Drive e caricarlo manualmente in Report Manager.');
-  return {status:'success',fileId:file.getId(),url:file.getUrl(),base64:Utilities.base64Encode(file.getBlob().getBytes())};
+  return {status:'success',fileId:file.getId(),fileName:typeof file.getName==='function'?file.getName():file.getId(),url:file.getUrl(),base64:Utilities.base64Encode(file.getBlob().getBytes())};
 }
 function archiveDriveSave_(data){
   const folder=archiveFolder_(),latest=archiveLatest_(folder),expected=text_(data.expectedFileId,150,false);
@@ -50,11 +50,11 @@ function archiveDriveSave_(data){
   if(bytes.length>6*1024*1024||bytes.length<4||(bytes[0]&255)!==80||(bytes[1]&255)!==75)throw new Error('File non riconosciuto come Excel .xlsx o oltre 6 MB.');
   const hash=archiveByteDigest_(bytes);if(!/^[a-f0-9]{64}$/.test(data.sha256)||hash!==data.sha256)throw new Error('Trasferimento incompleto: impronta del file non coincidente.');
   // Lost response / repeated save after refresh: reuse an identical saved version.
-  if(latest&&archiveByteDigest_(latest.getBlob().getBytes())===hash)return {status:'success',fileId:latest.getId(),url:latest.getUrl(),duplicate:true};
+  if(latest&&archiveByteDigest_(latest.getBlob().getBytes())===hash)return {status:'success',fileId:latest.getId(),fileName:typeof latest.getName==='function'?latest.getName():latest.getId(),url:latest.getUrl(),duplicate:true};
   const stamp=new Date().toISOString().replace(/[:.]/g,'-'),name='Report_Manager_Archivio_'+stamp+'_'+Utilities.getUuid().slice(0,8)+'.xlsx';
   const file=folder.createFile(Utilities.newBlob(bytes,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',name));
   if(archiveByteDigest_(file.getBlob().getBytes())!==hash)throw new Error('Verifica Drive non riuscita. La versione precedente resta quella attiva.');
   props_().setProperty(archivePointerKey_(folder),file.getId());
-  return {status:'success',fileId:file.getId(),url:file.getUrl(),duplicate:false};
+  return {status:'success',fileId:file.getId(),fileName:name,url:file.getUrl(),duplicate:false};
 }
 function archiveByteDigest_(bytes){return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,bytes).map(b=>('0'+(b&255).toString(16)).slice(-2)).join('');}

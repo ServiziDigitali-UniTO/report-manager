@@ -17,6 +17,10 @@ const RM3_RESOURCES_ = {
   '131131':{name:'Turno C - dott. Ruta',area:'buiatri'},
   '131132':{name:'Mungitura - dott. Casalone',area:'buiatri'},
   '131133':{name:'Tirocinio IZS',area:'izs'},
+  '133367':{name:'SIZOS: Turno 1',area:'azienda_zootecnica'},
+  '133368':{name:'SIZOS: Turno 2',area:'azienda_zootecnica'},
+  '133369':{name:'SIZOS: Turno 3',area:'azienda_zootecnica'},
+  '133370':{name:'SIZOS: Turno 4',area:'azienda_zootecnica'},
   '131126':{name:'TAVET Skill Lab 2 (Palazzina Blu)',area:'skill_lab',archived:true}
 };
 const RM3_WEEK_HEADERS_=['Settimana ID','Data fine','ID pubblicazione attiva','Versione','Aggiornato il','Fonte CSV','Impronta','Numero turni','Numero prenotazioni'];
@@ -42,7 +46,7 @@ function weeklyResources_(){
 function weeklyAppUrl_(){const value=props_().getProperty('APP_URL')||'';if(!/^https:\/\/[^/?#]+\/[^?#]*\/$/.test(value))weeklyError_('Configurare APP_URL nelle Proprietà script con l’indirizzo HTTPS dell’app e la barra finale.','SETUP');const origin=value.match(/^https:\/\/[^/]+/)[0];if(!authorizedOrigin_(origin))weeklyError_('L’origine di APP_URL deve essere presente in APP_ORIGINS.','SETUP');return value;}
 function weeklyNativeUrl_(view,params){const base=ScriptApp.getService().getUrl();if(!base)return '';return base+'?view='+view+'&'+Object.keys(params).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(params[k])).join('&');}
 function weeklyStudentLinks_(shiftId){const token=sign_('weekly-student|'+shiftId);return {studentUrl:weeklyAppUrl_()+'#presenza?'+['shift='+shiftId,'token='+encodeURIComponent(token)].join('&'),directStudentUrl:weeklyNativeUrl_('student',{shift:shiftId,token})};}
-function weeklyRevision_(){return props_().getProperty('RM_DATA_REVISION')||'0';}
+function weeklyRevision_(unit){return props_().getProperty(unit&&typeof v4Unit_==='function'?'RM4_REV_'+digest_(unit):'RM_DATA_REVISION')||'0';}
 function weeklyBump_(){props_().setProperty('RM_DATA_REVISION',Utilities.getUuid());}
 function weeklyDispatch_(request){
   const ss=SpreadsheetApp.openById(config_().SPREADSHEET_ID),t=weeklyTables_(ss),a=request.auth||{},d=request.data||{};
@@ -64,7 +68,7 @@ function weeklyNormalize_(d){
   if(!Array.isArray(d.shifts)||d.shifts.length>500)weeklyError_('Numero turni non valido (massimo 500 per pubblicazione).');
   const resourceMap=weeklyResources_(),keys=new Set();let bookings=0;
   const shifts=d.shifts.map(p=>{
-    const resourceId=text_(p.resourceId,30,true),resource=resourceMap[resourceId];if(!resource||resource.archived)weeklyError_('Risorsa non configurata o archiviata: '+resourceId+'.');
+    const resourceId=text_(p.resourceId,30,true),resource=resourceMap[resourceId];if(['133367','133368','133369','133370'].includes(resourceId))weeklyError_('Pubblicare SIZOS dalla gestione periodi.');if(!resource||resource.archived)weeklyError_('Risorsa non configurata o archiviata: '+resourceId+'.');
     const date=text_(p.date,10,true);if(!validDate_(date)||weeklyStart_(date)!==start)weeklyError_('Turno fuori dalla settimana selezionata.');
     const timeSlot=slot_(p.timeSlot),id=digest_('weekly|'+resourceId+'|'+date+'|'+timeSlot).slice(0,32);if(keys.has(id))weeklyError_('Turno ripetuto nella pubblicazione.');keys.add(id);
     if(!Array.isArray(p.students)||!p.students.length||p.students.length>150)weeklyError_('Ogni turno deve avere da 1 a 150 prenotati.');
@@ -79,7 +83,7 @@ function weeklyNormalize_(d){
   }).sort((a,b)=>a.id.localeCompare(b.id));
   return {start,end:weeklyEnd_(start),shifts,bookings,fingerprint:digest_(JSON.stringify(shifts))};
 }
-function weeklyPublished_(t,meta){if(!meta)return [];return weeklyRows_(t.shifts,6).filter(r=>r[0]===meta.publicationId).map(r=>JSON.parse(r[5]));}
+function weeklyPublished_(t,meta){if(!meta)return [];return (typeof v4RowsMatching_==='function'?v4RowsMatching_(t.shifts,1,meta.publicationId,6):weeklyRows_(t.shifts,6).filter(r=>r[0]===meta.publicationId)).map(r=>JSON.parse(r[5]));}
 function weeklyPreview_(t,d){
   const n=weeklyNormalize_(d),old=weeklyMeta_(t,n.start),oldShifts=weeklyPublished_(t,old);
   const oldKeys=new Set(oldShifts.flatMap(s=>s.students.map(st=>s.id+'|'+st.id))),newKeys=new Set(n.shifts.flatMap(s=>s.students.map(st=>s.id+'|'+st.id)));
@@ -88,7 +92,7 @@ function weeklyPreview_(t,d){
   return {weekStart:n.start,weekEnd:n.end,turns:n.shifts.length,bookings:n.bookings,unchanged:old?.fingerprint===n.fingerprint,expectedPublicationId:old?.publicationId||null,added:[...newKeys].filter(k=>!oldKeys.has(k)).length,removed:[...oldKeys].filter(k=>!newKeys.has(k)).length,removedValidated,areas:Object.keys(RM3_AREAS_).map(id=>({id,label:RM3_AREAS_[id],turns:n.shifts.filter(s=>s.area===id).length,bookings:n.shifts.filter(s=>s.area===id).reduce((v,s)=>v+s.students.length,0)}))};
 }
 function weeklyPublish_(t,d){
-  const n=weeklyNormalize_(d),old=weeklyMeta_(t,n.start);
+  const n=weeklyNormalize_(d),old=weeklyMeta_(t,n.start);if(typeof v4AssertOpen_==='function')v4AssertOpen_('week:'+n.start);
   if(old?.fingerprint===n.fingerprint)return {publicationId:old.publicationId,version:old.version,reused:true};
   if((d.expectedPublicationId||null)!==(old?.publicationId||null))weeklyError_('La settimana è stata aggiornata da un altro operatore. Ricalcolare l’anteprima.','CONFLICT');
   if(!n.shifts.length&&!d.allowEmpty)weeklyError_('Confermare esplicitamente la pubblicazione di una settimana vuota.');
@@ -119,24 +123,26 @@ function weeklyAccess_(t,a,area){
 function weeklyBoard_(t,a,d){
   const grant=weeklyAccess_(t,a,d.area),start=d.weekStart?text_(d.weekStart,10,true):weeklyStart_(weeklyToday_());
   if(weeklyStart_(start)!==start)weeklyError_('Settimana non valida.');
-  const meta=weeklyMeta_(t,start),revision=(meta?.publicationId||'none')+'|'+weeklyRevision_(),today=weeklyToday_();
+  const meta=weeklyMeta_(t,start),revision=(meta?.publicationId||'none')+'|'+weeklyRevision_('week:'+start),today=weeklyToday_();
   if(d.since===revision)return {notModified:true,revision,serverDate:today,serverTime:new Date().toISOString()};
-  const current=current_(t.events),byKey=new Map(current.map(r=>[r.presenceKey,r]));
-  const events=weeklyRows_(t.events,18).map(r=>r[17]?JSON.parse(r[17]):null).filter(Boolean);
+  const current=current_(t.events,'week:'+start),byKey=new Map(current.map(r=>[r.presenceKey,r]));
+  const events=typeof v4Current_==='function'?current:weeklyRows_(t.events,18).map(r=>r[17]?JSON.parse(r[17]):null).filter(Boolean);
+  const rollMap=typeof v4RollMap_==='function'?v4RollMap_():new Map();
   const shifts=weeklyPublished_(t,meta).filter(s=>s.area===grant.area&&(!grant.resourceIds.length||grant.resourceIds.includes(s.resourceId))).map(s=>{
     const students=s.students.map(st=>{
       const key=presenceKey_({date:s.date,resource:s.resource,timeSlot:s.timeSlot,matricola:st.matricola,bookingCode:st.bookingCode}),state=byKey.get(key)||null;
-      const discrepant=!!state&&state.validationMode!=='STUDENTE_QR'&&state.status!=='present'&&events.some(r=>r.presenceKey===key&&r.validationMode==='STUDENTE_QR'&&r.status==='present');
+      const discrepant=!!state&&state.validationMode!=='STUDENTE_QR'&&state.status!=='present'&&(state.hasStudentCheckIn||events.some(r=>r.presenceKey===key&&r.validationMode==='STUDENTE_QR'&&r.status==='present'));
       return {...st,email:undefined,state:state?{id:state.id,status:state.status,delayMinutes:state.delayMinutes,note:state.note,validatedAt:state.validatedAt,validatedBy:state.validatedBy,validationMode:state.validationMode}:null,discrepant};
     });
     current.filter(r=>r.weeklyShiftId===s.id&&r.isManualIntegration&&!students.some(st=>st.id===r.weeklyStudentId)).forEach(r=>students.push({id:r.weeklyStudentId,name:r.studentName,matricola:r.matricola,bookingCode:r.bookingCode||'',email:undefined,state:{id:r.id,status:r.status,delayMinutes:r.delayMinutes,note:r.note,validatedAt:r.validatedAt,validatedBy:r.validatedBy,validationMode:r.validationMode},discrepant:false,manual:true}));
-    return {...s,students,...weeklyStudentLinks_(s.id)};
+    return {...s,concludedAt:rollMap.get(s.id)||'',students,...weeklyStudentLinks_(s.id)};
   });
   const removedWithPresence=current.filter(r=>r.date>=start&&r.date<=weeklyEnd_(start)&&r.weeklyArea===grant.area&&(!grant.resourceIds.length||grant.resourceIds.includes(r.resourceId))&&!shifts.some(s=>s.id===r.weeklyShiftId&&s.students.some(st=>st.id===r.weeklyStudentId))).length;
-  return {notModified:false,revision,serverDate:today,serverTime:new Date().toISOString(),area:grant.area,areaLabel:RM3_AREAS_[grant.area],accessLabel:grant.label,weekStart:start,weekEnd:weeklyEnd_(start),weeks:weeklyRows_(t.weeks,9).map(r=>({start:r[0],end:r[1]})).sort((x,y)=>x.start.localeCompare(y.start)),publication:meta?{version:meta.version,updatedAt:meta.updatedAt}:null,shifts,removedWithPresence};
+  return {unitState:typeof v4Unit_==='function'?v4Unit_('week:'+start).state:'OPEN',notModified:false,revision,serverDate:today,serverTime:new Date().toISOString(),area:grant.area,areaLabel:RM3_AREAS_[grant.area],accessLabel:grant.label,weekStart:start,weekEnd:weeklyEnd_(start),weeks:weeklyRows_(t.weeks,9).map(r=>({start:r[0],end:r[1]})).sort((x,y)=>x.start.localeCompare(y.start)),publication:meta?{version:meta.version,updatedAt:meta.updatedAt}:null,shifts,removedWithPresence};
 }
 function weeklyFindShift_(t,id){
-  const candidates=weeklyRows_(t.shifts,6).filter(r=>r[1]===id);
+  if(typeof v4ArchivedShift_==='function'&&v4ArchivedShift_(id))weeklyError_('Turno archiviato. Rivolgersi alla segreteria.','ARCHIVED');
+  const candidates=typeof v4RowsMatching_==='function'?v4RowsMatching_(t.shifts,2,id,6):weeklyRows_(t.shifts,6).filter(r=>r[1]===id);
   for(let i=candidates.length-1;i>=0;i--){const row=candidates[i],meta=weeklyMeta_(t,row[2]);if(meta&&meta.publicationId===row[0])return JSON.parse(row[5]);}
   weeklyError_('Turno non più pubblicato. Richiedere il registro aggiornato.','RETRACTED');
 }

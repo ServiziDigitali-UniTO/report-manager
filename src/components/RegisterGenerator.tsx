@@ -59,6 +59,11 @@ const DEFAULT_TEMPLATE_SETTINGS: RegisterTemplateSettings = {
   showResourceColumn: true,
   showNameColumn: true,
   showSignatureColumn: true,
+  showEntrySignatureColumn: false,
+  showExitSignatureColumn: false,
+  showEntryTimeColumn: false,
+  showExitTimeColumn: false,
+  showWorkedHoursColumn: false,
   signatureBoxWidth: '180px',
   groupByDay: true,
   compactMode: false,
@@ -1204,12 +1209,20 @@ export const RegisterGenerator: React.FC<RegisterGeneratorProps> = ({ records })
                     type="checkbox"
                     checked={templateSettings.showSignatureColumn !== false}
                     onChange={(e) =>
-                      setTemplateSettings({ ...templateSettings, showSignatureColumn: e.target.checked })
+                      setTemplateSettings({ ...templateSettings, showSignatureColumn: e.target.checked, ...(e.target.checked ? {showEntrySignatureColumn:false,showExitSignatureColumn:false} : {}) })
                     }
                     className="rounded text-[#3E5C4B] focus:ring-[#3E5C4B]"
                   />
                   <span>Colonna Firma del Tirocinante</span>
                 </label>
+                {([
+                  ['showEntrySignatureColumn','Colonna Firma del Tirocinante in entrata'],
+                  ['showExitSignatureColumn','Colonna Firma del Tirocinante in uscita'],
+                  ['showEntryTimeColumn','Colonna Ora di entrata'],
+                  ['showExitTimeColumn','Colonna Ora di uscita'],
+                  ['showWorkedHoursColumn','Colonna Ore svolte']
+                ] as const).map(([key,label])=><label key={key} className="flex items-center gap-2 cursor-pointer font-medium text-stone-800 dark:text-stone-200"><input type="checkbox" checked={!!templateSettings[key]} onChange={e=>setTemplateSettings({...templateSettings,[key]:e.target.checked,...(e.target.checked&&(key==='showEntrySignatureColumn'||key==='showExitSignatureColumn')?{showSignatureColumn:false}:{})})}/><span>{label}</span></label>)}
+
 
                 <label className="flex items-center gap-2 cursor-pointer font-medium text-stone-800 dark:text-stone-200">
                   <input

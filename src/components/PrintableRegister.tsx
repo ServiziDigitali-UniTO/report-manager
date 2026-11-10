@@ -184,7 +184,7 @@ export const PrintableRegister: React.FC<PrintableRegisterProps> = ({
     }
 
     // In Cartaceo mode: Signature Box
-    if (!isDigitalMode && settings.showSignatureColumn !== false) {
+    if (!isDigitalMode && settings.showSignatureColumn !== false && !settings.showEntrySignatureColumn && !settings.showExitSignatureColumn) {
       cols.push({
         id: 'signature',
         label: 'FIRMA DEL TIROCINANTE',
@@ -196,6 +196,14 @@ export const PrintableRegister: React.FC<PrintableRegisterProps> = ({
         ),
       });
     }
+
+    for(const [setting,id,label,weight] of [
+      ['showEntryTimeColumn','entry_time','ORA ENTRATA',9],
+      ['showExitTimeColumn','exit_time','ORA USCITA',9],
+      ['showWorkedHoursColumn','worked_hours','ORE SVOLTE',9],
+      ['showEntrySignatureColumn','entry_signature','FIRMA ENTRATA',20],
+      ['showExitSignatureColumn','exit_signature','FIRMA USCITA',20],
+    ] as const){if(settings[setting])cols.push({id,label,weight,alignClass:'py-2 px-2 border-l border-slate-300 text-center',headerAlignClass:'text-center py-2.5 px-1',renderCell:()=><div className="h-9 border-b border-dashed border-slate-400 w-full"/>});}
 
     // In Digitale mode: Digital Verification / Check Column
     if (isDigitalMode) {

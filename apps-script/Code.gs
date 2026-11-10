@@ -1,4 +1,4 @@
-/** Report Manager — receiver v2. No database: Sheets only.
+/** Report Manager — receiver v4. No external database: Sheets and Drive archives.
  * Configure Script Properties before running initialize_():
  * SPREADSHEET_ID, APP_ORIGINS (comma-separated HTTPS origins), ADMIN_PASSWORD (>=20 chars).
  * No passwords or secrets belong in the GitHub repository.
@@ -15,7 +15,7 @@ function initialize_() {
   const p = props_();
   if (!p.getProperty('SIGNING_SECRET')) p.setProperty('SIGNING_SECRET', Utilities.getUuid() + Utilities.getUuid());
   const c = config_();
-  withLock_(() => { const ss = SpreadsheetApp.openById(c.SPREADSHEET_ID); ss.setSpreadsheetTimeZone('Europe/Rome'); sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_); sheet_(ss,'RM_Turni',SHIFT_HEADERS_); if(typeof weeklyInit_==='function')weeklyInit_(ss); });
+  withLock_(() => { const ss = SpreadsheetApp.openById(c.SPREADSHEET_ID); ss.setSpreadsheetTimeZone('Europe/Rome'); sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_); sheet_(ss,'RM_Turni',SHIFT_HEADERS_); if(typeof weeklyInit_==='function')weeklyInit_(ss); if(typeof v4Init_==='function')v4Init_(ss); });
 }
 function withLock_(fn) { const lock = LockService.getScriptLock(); lock.waitLock(25000); try { return fn(); } finally { SpreadsheetApp.flush(); lock.releaseLock(); } }
 function sheet_(ss, name, headers) {
@@ -52,13 +52,14 @@ function doGet(e) {
     return t.evaluate().setTitle('Collegamento Report Manager').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch (_) { return ContentService.createTextOutput(JSON.stringify({status:'error',message:'Collegamento non configurato o origine non autorizzata.'})).setMimeType(ContentService.MimeType.JSON); }
 }
-function doPost() { return ContentService.createTextOutput(JSON.stringify({status:'error',message:'Usare il collegamento Report Manager v2.'})).setMimeType(ContentService.MimeType.JSON); }
+function doPost() { return ContentService.createTextOutput(JSON.stringify({status:'error',message:'Usare il collegamento Report Manager.'})).setMimeType(ContentService.MimeType.JSON); }
 /** Sole public RPC; every privileged operation checks credentials server-side. */
 function dispatch(request) {
   try {
-    if (!request || JSON.stringify(request).length > (request.action==='archive.driveSave'?8600000:350000)) throw new Error('Richiesta non valida o troppo grande.');
+    if (!request || JSON.stringify(request).length > (request.action==='archive.driveSave'?8600000:String(request.action||'').startsWith('v4.')?1500000:350000)) throw new Error('Richiesta non valida o troppo grande.');
     const origin = text_(request.origin,200,true);
     if (!authorizedOrigin_(origin)) throw new Error('Origine non autorizzata.');
+    if(String(request.action||'').startsWith('v4.'))return v4Dispatch_(request);
     if(String(request.action||'').startsWith('archive.')){if(typeof archiveDispatch_!=='function')throw new Error('Aggiungere Archive.gs e aggiornare la distribuzione.');return archiveDispatch_(request);}
     if(String(request.action||'').startsWith('weekly.'))return weeklyDispatch_(request);
     const a=request.auth || {}, data=request.data || {};
@@ -66,7 +67,7 @@ function dispatch(request) {
       const ss=SpreadsheetApp.openById(config_().SPREADSHEET_ID);
       const shifts=sheet_(ss,'RM_Turni',SHIFT_HEADERS_), events=sheet_(ss,'Presenze_Tirocini',EVENT_HEADERS_);
       switch(request.action) {
-        case 'health': admin_(a); return {status:'success',message:'Accesso al Foglio e struttura delle schede verificati.',version:3};
+        case 'health': admin_(a); return {status:'success',message:'Accesso al Foglio e struttura delle schede verificati.',version:4};
         case 'registerShift': admin_(a); return {status:'success',...registerShift_(shifts,data)};
         case 'getShift': return {status:'success',...getShift_(shifts,a)};
         case 'submit': return {status:'success',...submit_(shifts,events,a,data)};
@@ -88,9 +89,10 @@ function normalizeShift_(p) {
     return {id:'st-'+i,name:text_(s.name,150,true).toUpperCase(),matricola,bookingCode:text_(s.bookingCode,100,false),email:text_(s.email,200,false)};
   })};
 }
-function findShift_(sheet,id) { if(sheet.getLastRow()<2) return null; const rows=sheet.getRange(2,1,sheet.getLastRow()-1,2).getValues(); const row=rows.find(r=>r[0]===id); return row ? JSON.parse(row[1]) : null; }
+function findShift_(sheet,id) { if(typeof v4ArchivedShift_==='function'&&v4ArchivedShift_(id))throw new Error('Turno archiviato. Rivolgersi alla segreteria.'); if(sheet.getLastRow()<2) return null; const rows=sheet.getRange(2,1,sheet.getLastRow()-1,2).getValues(); const row=rows.find(r=>r[0]===id); return row ? JSON.parse(row[1]) : null; }
 function token_(id,role) { return sign_('shift|'+id+'|'+role); }
 function registerShift_(sheet,p) {
+  if(typeof v4AssertOpen_==='function'){v4AssertOpen_('week:'+weeklyStart_(p.date));if(/^SIZOS:/.test(p.resource||''))throw new Error('Usare la pubblicazione periodi SIZOS.');}
   const payload=normalizeShift_(p);
   // Roster snapshot is immutable: a changed roster creates new tokens. Same presence key across snapshots.
   const id=digest_(JSON.stringify(payload)).slice(0,32);
@@ -117,7 +119,8 @@ function getShift_(sheet,a) {
   return {payload:{...s.payload,shiftId:s.shiftId,token:a.token,role:s.role,...(s.role==='tutor' && equal_(a.tutorPassword,config_().TUTOR_PASSWORD)?{serverPin:s.pin}:{})}};
 }
 function presenceKey_(r) { return digest_(JSON.stringify([r.date,r.resource.toLowerCase(),r.timeSlot,(r.matricola==='-'?'booking:'+r.bookingCode:r.matricola).toLowerCase()])); }
-function current_(sheet) {
+function current_(sheet,unit) {
+  if(typeof v4Current_==='function'){const indexed=v4Current_(sheet,unit);if(indexed)return indexed;}
   if(sheet.getLastRow()<2) return [];
   const rows=sheet.getRange(2,18,sheet.getLastRow()-1,1).getValues(), map=new Map();
   rows.forEach(row=>{if(!row[0]) return; const r=JSON.parse(row[0]); map.set(r.presenceKey,r);});
@@ -177,9 +180,11 @@ function commitEvents_(events,records,requestId,options) {
   options=options||{};
   if(!/^[a-zA-Z0-9_-]{10,80}$/.test(requestId))throw new Error('Identificativo richiesta non valido.');
   const prepared=records.map(r=>{const copy={...r};delete copy.fingerprint;copy.presenceKey=presenceKey_(copy);copy.fingerprint=digest_(JSON.stringify(copy));return copy;});
-  const current=current_(events),byKey=new Map(current.map(r=>[r.presenceKey,r]));
+  if(typeof v4AssertOpen_==='function')prepared.forEach(r=>v4AssertOpen_(v4UnitKey_(r)));
+  const unit=typeof v4UnitKey_==='function'&&prepared.length&&prepared.every(r=>v4UnitKey_(r)===v4UnitKey_(prepared[0]))?v4UnitKey_(prepared[0]):undefined;
+  const current=current_(events,unit),byKey=new Map(current.map(r=>[r.presenceKey,r]));
   if(options.student)prepared.forEach(r=>{const old=byKey.get(r.presenceKey);if(old && old.validationMode!=='STUDENTE_QR' && old.status==='absent'){const e=new Error('Presenza già verificata come assente dal tutor. Richiedere una rettifica.');e.code='TUTOR_ABSENT';throw e;}});
-  const previous=events.getLastRow()>1?events.getRange(2,17,events.getLastRow()-1,2).getValues().filter(r=>r[0]===requestId).map(r=>JSON.parse(r[1])):[];
+  const previous=typeof v4Previous_==='function'?v4Previous_(events,requestId):events.getLastRow()>1?events.getRange(2,17,events.getLastRow()-1,2).getValues().filter(r=>r[0]===requestId).map(r=>JSON.parse(r[1])):[];
   const batchFingerprint=digest_(JSON.stringify(prepared.map(r=>r.fingerprint)));
   if(previous.length){
     if(previous.some(r=>r.batchFingerprint!==batchFingerprint))throw new Error('ID richiesta già usato con dati differenti.');
@@ -198,7 +203,7 @@ function commitEvents_(events,records,requestId,options) {
   });
   if(toWrite.length){
     const rows=toWrite.map(r=>[r.date,r.resource,r.timeSlot,r.studentName,r.matricola,r.bookingCode,({present:'PRESENTE',late:'RITARDO',absent:'ASSENTE'})[r.status],r.delayMinutes,r.validationMode,r.validatedAt,r.validatedBy,'NON CONSERVATO',r.securityHash,[r.note,r.tutorNotes?'Note tutor: '+r.tutorNotes:''].filter(Boolean).join('\n'),r.id,r.presenceKey,requestId,JSON.stringify(r)].map(safeCell_));
-    appendRows_(events,rows);if(typeof weeklyBump_==='function')weeklyBump_();
+    appendRows_(events,rows);if(typeof v4IndexCommit_==='function')v4IndexCommit_(events,toWrite);if(typeof weeklyBump_==='function')weeklyBump_();
   }
   return {confirmed:true,records:confirmed,count:confirmed.length,inserted:toWrite.length};
 }

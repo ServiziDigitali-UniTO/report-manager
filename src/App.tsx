@@ -1,3 +1,7 @@
+import {ArchiveStatus} from './archive/ArchiveStatus';
+import {installArchiveAutoOpen} from './archive/driveSession';
+import {getArchive,setArchive,updateArchive} from './archive/store';
+import {retainBookings} from './archive/model';
 import {ArchivePanel} from './archive/ArchivePanel';
 import {ArchiveReport,StudentHistoryWithArchive} from './archive/ArchiveReport';
 import {WeeklyRouter} from './weekly/WeeklyRouter';
@@ -20,6 +24,7 @@ import { ValidationShiftPayload } from './types';
 import { ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function App(){
+  useEffect(()=>{if(!/^#(area|presenza|valida|studente|appello|tutor|sessione)/.test(window.location.hash))return installArchiveAutoOpen();},[]);
   const [hash,setHash]=useState(window.location.hash);
   useEffect(()=>{const update=()=>setHash(window.location.hash);window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update);},[]);
   if(hash.startsWith('#area/')||hash.startsWith('#presenza'))return <WeeklyRouter/>;
@@ -115,6 +120,7 @@ function LegacyApp() {
   }, [records]);
 
   const handleCsvLoaded = (newCsvText: string, newFileName: string) => {
+    void updateArchive(a=>retainBookings(a,parseAffluencesCsv(newCsvText))).catch(e=>setStatusAnnouncement('CSV caricato ma archivio non aggiornato: '+e.message));
     setCsvContent(newCsvText);
     setFileName(newFileName);
     setIsUsingSampleData(false);
@@ -239,6 +245,7 @@ function LegacyApp() {
         <button className="px-4 py-2 rounded bg-[#2C4437] text-white" onClick={()=>{setArchiveOpen(false);setWeeklyAdminOpen(true);}}>Pubblicazione settimanale e aree tutor</button>
         <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>{setArchiveOpen(false);setWeeklyAdminOpen(false);}}>Strumenti esistenti e report</button>
         <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>setArchiveOpen(true)}>Archivio presenze Excel</button>
+        <ArchiveStatus/>
       </div>
       {/* Navbar Header */}
       <Header
