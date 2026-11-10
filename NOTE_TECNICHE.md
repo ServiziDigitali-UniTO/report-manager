@@ -1,3 +1,7 @@
+## Archivio 3.1 (prima fase)
+
+Vedere AGGIORNAMENTO_ARCHIVIO_3_1.md per nuovi endpoint archive.*, ambito Drive, versioni, formato Excel e limiti. La scheda 5 usa ArchiveReport e non il componente ShiftResourceReport precedente, mantenuto nei sorgenti per compatibilità. Lo Storico Studente contiene due viste distinte. La lettura periodica delle aree tutor è invariata. Nessuna API di cancellazione è stata aggiunta.
+
 # Note tecniche versione 3
 
 ## Un solo progetto, due accessi alla stessa UI

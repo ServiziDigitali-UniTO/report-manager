@@ -56,9 +56,10 @@ function doPost() { return ContentService.createTextOutput(JSON.stringify({statu
 /** Sole public RPC; every privileged operation checks credentials server-side. */
 function dispatch(request) {
   try {
-    if (!request || JSON.stringify(request).length > 350000) throw new Error('Richiesta non valida o troppo grande.');
+    if (!request || JSON.stringify(request).length > (request.action==='archive.driveSave'?8600000:350000)) throw new Error('Richiesta non valida o troppo grande.');
     const origin = text_(request.origin,200,true);
     if (!authorizedOrigin_(origin)) throw new Error('Origine non autorizzata.');
+    if(String(request.action||'').startsWith('archive.')){if(typeof archiveDispatch_!=='function')throw new Error('Aggiungere Archive.gs e aggiornare la distribuzione.');return archiveDispatch_(request);}
     if(String(request.action||'').startsWith('weekly.'))return weeklyDispatch_(request);
     const a=request.auth || {}, data=request.data || {};
     return withLock_(() => {

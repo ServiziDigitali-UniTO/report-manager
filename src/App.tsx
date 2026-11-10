@@ -1,3 +1,5 @@
+import {ArchivePanel} from './archive/ArchivePanel';
+import {ArchiveReport,StudentHistoryWithArchive} from './archive/ArchiveReport';
 import {WeeklyRouter} from './weekly/WeeklyRouter';
 import {WeeklyAdmin} from './weekly/WeeklyAdmin';
 import { publicAsset } from './utils/assets';
@@ -8,8 +10,6 @@ import { Header } from './components/Header';
 import { RegisterGenerator } from './components/RegisterGenerator';
 import { StatisticsDashboard } from './components/StatisticsDashboard';
 import { CsvUploader } from './components/CsvUploader';
-import { StudentHistory } from './components/StudentHistory';
-import { ShiftResourceReport } from './components/ShiftResourceReport';
 import { AccessibilityModal } from './components/AccessibilityModal';
 import { AttendanceValidatorModal } from './components/AttendanceValidatorModal';
 import { StudentSelfCheckInModal } from './components/StudentSelfCheckInModal';
@@ -27,6 +27,7 @@ export default function App(){
 }
 function LegacyApp() {
   const [weeklyAdminOpen,setWeeklyAdminOpen]=useState(true);
+  const [archiveOpen,setArchiveOpen]=useState(false);
   const [activeTab, setActiveTab] = useState<'registers' | 'statistics' | 'uploader' | 'studentHistory' | 'shiftReport'>('registers');
   const [csvContent, setCsvContent] = useState<string>(DEFAULT_AFFLUENCES_CSV);
   const [fileName, setFileName] = useState<string>('Report_Affluences_Sample.csv');
@@ -235,19 +236,20 @@ function LegacyApp() {
       </div>
 
       <div className="print:hidden p-3 flex flex-wrap gap-2 bg-white text-stone-900 border-b border-stone-200 dark:bg-stone-900 dark:text-stone-100 dark:border-stone-700">
-        <button className="px-4 py-2 rounded bg-[#2C4437] text-white" onClick={()=>setWeeklyAdminOpen(true)}>Pubblicazione settimanale e aree tutor</button>
-        <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>setWeeklyAdminOpen(false)}>Strumenti esistenti e report</button>
+        <button className="px-4 py-2 rounded bg-[#2C4437] text-white" onClick={()=>{setArchiveOpen(false);setWeeklyAdminOpen(true);}}>Pubblicazione settimanale e aree tutor</button>
+        <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>{setArchiveOpen(false);setWeeklyAdminOpen(false);}}>Strumenti esistenti e report</button>
+        <button className="px-4 py-2 rounded border border-stone-300 bg-stone-100 text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100" onClick={()=>setArchiveOpen(true)}>Archivio presenze Excel</button>
       </div>
       {/* Navbar Header */}
       <Header
         activeTab={activeTab}
-        setActiveTab={(tab)=>{setWeeklyAdminOpen(false);setActiveTab(tab);}}
+        setActiveTab={(tab)=>{setArchiveOpen(false);setWeeklyAdminOpen(false);setActiveTab(tab);}}
         totalRecordsCount={totalRecordsCount}
         uniqueResourcesCount={uniqueResources.length}
         dateRangeStr={dateRangeStr}
         fileName={fileName}
         isUsingSampleData={isUsingSampleData}
-        onUploadClick={() => {setWeeklyAdminOpen(false);setActiveTab('uploader');}}
+        onUploadClick={() => {setArchiveOpen(false);setWeeklyAdminOpen(false);setActiveTab('uploader');}}
         onOpenAccessibility={() => setIsAccessibilityModalOpen(true)}
       />
 
@@ -264,12 +266,13 @@ function LegacyApp() {
           tabIndex={0}
           className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#3E5C4B]/50 rounded-xl"
         >
-          {weeklyAdminOpen&&<WeeklyAdmin records={records} sourceName={fileName} onUpload={handleCsvLoaded}/>}
-          {!weeklyAdminOpen&&activeTab === 'registers' && <RegisterGenerator records={records} />}
+          {archiveOpen&&<ArchivePanel/>}
+          {!archiveOpen&&weeklyAdminOpen&&<WeeklyAdmin records={records} sourceName={fileName} onUpload={handleCsvLoaded}/>}
+          {!archiveOpen&&!weeklyAdminOpen&&activeTab === 'registers' && <RegisterGenerator records={records} />}
 
-          {!weeklyAdminOpen&&activeTab === 'statistics' && <StatisticsDashboard records={records} />}
+          {!archiveOpen&&!weeklyAdminOpen&&activeTab === 'statistics' && <StatisticsDashboard records={records} />}
 
-          {!weeklyAdminOpen&&activeTab === 'uploader' && (
+          {!archiveOpen&&!weeklyAdminOpen&&activeTab === 'uploader' && (
             <CsvUploader
               onCsvLoaded={handleCsvLoaded}
               onResetToDefault={handleResetToDefault}
@@ -282,19 +285,17 @@ function LegacyApp() {
             />
           )}
 
-          {!weeklyAdminOpen&&activeTab === 'studentHistory' && (
-            <StudentHistory
+          {!archiveOpen&&!weeklyAdminOpen&&activeTab === 'studentHistory' && (
+            <StudentHistoryWithArchive
+              onOpenArchive={()=>setArchiveOpen(true)}
               records={records}
               onNavigateToUploader={() => setActiveTab('uploader')}
             />
           )}
 
-          {!weeklyAdminOpen&&activeTab === 'shiftReport' && (
+          {!archiveOpen&&!weeklyAdminOpen&&activeTab === 'shiftReport' && (
             <div className="max-w-7xl mx-auto px-4 py-8">
-              <ShiftResourceReport
-                records={records}
-                onOpenGoogleSheetsSettings={() => setIsGoogleSheetsModalOpen(true)}
-              />
+              <ArchiveReport onOpenArchive={()=>setArchiveOpen(true)}/>
             </div>
           )}
         </div>

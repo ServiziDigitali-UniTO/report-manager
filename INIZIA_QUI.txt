@@ -1,3 +1,6 @@
+AGGIORNAMENTO 3.1: LEGGERE PRIMA AGGIORNAMENTO_ARCHIVIO_3_1.md
+Archivio cumulativo Excel, cartella Drive e nuove viste 4/5. Nessuna cancellazione Google abilitata.
+
 REPORT MANAGER 3 — AGGIORNAMENTO SETTIMANALE
 
 LEGGERE PRIMA AGGIORNAMENTO_V3.md.

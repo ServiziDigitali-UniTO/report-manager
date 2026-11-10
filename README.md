@@ -1,3 +1,7 @@
+# Report Manager 3.1 — archivio cumulativo presenze
+
+Prima di aggiornare, leggere **AGGIORNAMENTO_ARCHIVIO_3_1.md**. Questa versione implementa la prima fase: Excel cumulativo, versioni Drive e consultazione delle schede 4 e 5. Non cancellare dati Google. Le indicazioni qui sotto descrivono la base v3; per le schede 4 e 5 prevale la nuova guida.
+
 # Report Manager 3 — registri settimanali online
 
 Evoluzione dello stesso progetto React/TypeScript, pubblicabile su GitHub Pages o altro hosting statico HTTPS. CSV elaborati nel browser, Foglio Google come archivio condiviso, nessun database esterno, nessuna funzione Netlify. Non è prevista una modalità offline.

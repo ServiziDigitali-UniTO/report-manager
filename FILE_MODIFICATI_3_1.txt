@@ -1,0 +1,25 @@
+Confronto con lo ZIP GitHub fornito il 10 novembre 2026.
+
+NUOVI
+AGGIORNAMENTO_ARCHIVIO_3_1.md
+apps-script/Archive.gs
+src/archive/ArchivePanel.tsx
+src/archive/ArchiveReport.tsx
+src/archive/archive.css
+src/archive/model.ts
+src/archive/store.ts
+src/archive/workbook.ts
+tests/archive-workbook.test.mjs
+tests/archive.test.mjs
+
+MODIFICATI
+INIZIA_QUI.txt
+NOTE_TECNICHE.md
+README.md
+apps-script/Code.gs
+apps-script/appsscript.json
+package-lock.json
+package.json
+src/App.tsx
+
+FILE_MODIFICATI_3_1.txt è questo elenco. Gli altri file restano identici allo ZIP fornito.
