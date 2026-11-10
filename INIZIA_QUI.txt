@@ -1,0 +1,11 @@
+REPORT MANAGER 4.0
+
+1. Leggi AGGIORNAMENTO_V4.md.
+2. Conserva backup di codice, Foglio e ultimo Excel; collauda su copia e cartella Drive di prova.
+3. Aggiorna i file Apps Script, aggiungi V4.gs, esegui initialize_ tramite wrapper pubblico temporaneo.
+4. Aggiorna la distribuzione esistente con una nuova versione; conserva URL e segreti.
+5. Aggiorna GitHub con l'intero progetto, comprese le sottocartelle; attendi Actions verde.
+6. Segui COLLAUDO_V4.md prima dell'uso operativo.
+
+La rimozione dei dati rimane disabilitata finché RM4_CLEANUP_ENABLED non viene impostato esplicitamente a true. Prima di abilitarla aggiornare o disattivare TUTTE le distribuzioni precedenti che puntano allo stesso Foglio.
+Le istruzioni 4.0 prevalgono sulle guide storiche 3 e 3.1.

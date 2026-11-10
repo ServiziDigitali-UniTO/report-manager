@@ -1,0 +1,40 @@
+REPORT MANAGER 4.0 — differenze rispetto al pacchetto 3.1
+Il pacchetto ZIP contiene il progetto completo.
+
+AGGIUNTO  AGGIORNAMENTO_V4.md
+AGGIUNTO  COLLAUDO_V4.md
+AGGIUNTO  apps-script/V4.gs
+AGGIUNTO  src/archive/ArchiveCorrection.tsx
+AGGIUNTO  src/archive/ArchiveStatus.tsx
+AGGIUNTO  src/archive/LifecyclePanel.tsx
+AGGIUNTO  src/archive/driveSession.ts
+AGGIUNTO  src/periods/PeriodViews.tsx
+AGGIUNTO  src/periods/PeriodsAdmin.tsx
+AGGIUNTO  src/periods/saveStatus.ts
+AGGIUNTO  tests/history-v4.test.mjs
+AGGIUNTO  tests/v4.test.mjs
+MODIFICATO INIZIA_QUI.txt
+MODIFICATO NOTE_TECNICHE.md
+MODIFICATO PUBBLICAZIONE.md
+MODIFICATO README.md
+MODIFICATO apps-script/Archive.gs
+MODIFICATO apps-script/Code.gs
+MODIFICATO apps-script/Portal.html
+MODIFICATO apps-script/Weekly.gs
+MODIFICATO package-lock.json
+MODIFICATO package.json
+MODIFICATO public/tutor.css
+MODIFICATO src/App.tsx
+MODIFICATO src/archive/ArchivePanel.tsx
+MODIFICATO src/archive/ArchiveReport.tsx
+MODIFICATO src/archive/model.ts
+MODIFICATO src/archive/store.ts
+MODIFICATO src/archive/workbook.ts
+MODIFICATO src/components/PrintableRegister.tsx
+MODIFICATO src/components/RegisterGenerator.tsx
+MODIFICATO src/services/weekly.ts
+MODIFICATO src/types.ts
+MODIFICATO src/utils/csvParser.ts
+MODIFICATO src/weekly/WeeklyAdmin.tsx
+MODIFICATO src/weekly/WeeklyRouter.tsx
+MODIFICATO tests/archive-workbook.test.mjs
